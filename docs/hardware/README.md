@@ -21,7 +21,7 @@ Parts identified from photos of the testbed (2026-10-20). Values marked *check* 
 - **Runs on 5 V.** The label prints the connector pins as `5V A G B` starting at pin 1 (5 V, channel A, ground, channel B). This matches the board's encoder ports, which supply 5 V. The encoder pins we use (PA0, PA1, PA15, PB3) are 5 V tolerant on the STM32F407 (*check* in the datasheet pin table).
 - Datasheet: E8T page on usdigital.com.
 
-## ESC: 4-in-1, marked DHMC…4IN1
+## ESC: 4-in-1, marked DMHC 160720014INJ (v1.1)
 
 ![4-in-1 ESC](photos/esc-4in1.jpg)
 
