@@ -23,6 +23,8 @@ A conflict means you both changed the same lines. GitHub Desktop shows the file;
 Each person works in their own folder (`firmware/` + `ai/piml/` = Zakaria, `ai/deepc/` = Amr), and **always pulls before starting**. Then conflicts almost never happen.
 
 ## Command-line equivalent (optional)
+Full command-line guide: [GIT_COMMANDS.md](GIT_COMMANDS.md)
+
 ```
 git clone https://github.com/zakaria0aladem/2DOF-Drone-Testbed.git   # once
 git pull                        # 1. get the latest

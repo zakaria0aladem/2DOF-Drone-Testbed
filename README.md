@@ -9,4 +9,4 @@ Shared repo for Zakaria and Amr: a 2-DOF drone testbed on the Hiwonder ROS Robot
 | `ai/deepc/` | DeepC (data-driven predictive control) | Amr |
 | `docs/` | Reports, figures, notes | both |
 
-New to Git? Read [docs/GIT_TUTORIAL.md](docs/GIT_TUTORIAL.md) first (5 minutes).
+New to Git? Read [docs/GIT_TUTORIAL.md](docs/GIT_TUTORIAL.md) first (5 minutes). Prefer typing commands? See [docs/GIT_COMMANDS.md](docs/GIT_COMMANDS.md).
