@@ -1,0 +1,25 @@
+# STM32CubeIDE build output (rebuilt on every build)
+Debug/
+Release/
+*.o
+*.d
+*.su
+*.elf
+*.map
+*.list
+# CubeIDE / Eclipse per-computer settings
+.metadata/
+.settings/language.settings.xml
+*.launch
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Windows / editors
+Thumbs.db
+desktop.ini
+.vscode/
