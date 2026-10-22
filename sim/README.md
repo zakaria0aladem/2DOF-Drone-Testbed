@@ -12,21 +12,51 @@ the frame moves, the encoders count and the IMU feels it.
 How it works, what is and isn't simulated, and how to measure the numbers it
 still guesses: [docs/SIMULATION.md](../docs/SIMULATION.md).
 
+## Quick start (Windows)
+
+* **Double-click `start_simulator.bat`** (in this `sim` folder). The first time
+  it installs what it needs, then the simulator window opens with the demo
+  firmware.
+* **Drag your `.elf` or `.bin` onto `start_simulator.bat`** to run your own
+  firmware in the window.
+
+On Linux or macOS, or from a terminal: `python -m testbed_sim --gui`.
+
 ## 1. Install (once)
 
 You need Python 3.10 or newer. In a terminal, in this `sim` folder:
 
 ```
 pip install -r requirements.txt
+python -m testbed_sim --check
 ```
+
+`--check` tests the installation step by step (Python version, packages,
+a short run of the demo firmware) and tells you how to fix what is missing.
 
 ## 2. Run the demo firmware
 
 ```
-python -m testbed_sim firmware_demo/prebuilt/testbed_demo.bin
+python -m testbed_sim --gui
 ```
 
-You see what the board prints on USB port 1 (USART1), like a serial monitor:
+With no firmware file, the simulator runs the demo firmware
+(`firmware_demo/prebuilt/testbed_demo.bin`). `--gui` opens a window with:
+
+* a **top view** of the frame turning on the yaw joint and a **side view** of
+  it tilting on the pitch joint. The props change colour with throttle, and
+  arrows show the thrust
+* a **plot** of yaw and pitch over the last 10 s
+* the four **ESCs**: pulse width, PWM rate, state (arming, armed, no-signal),
+  motor rpm and thrust
+* bus voltage and current, the LED, the buzzer, and whether the CPU is running
+* buttons for **KEY1, KEY2** (hold them down with the mouse, like the real
+  keys), **RESET**, pushing the frame by hand, **Pause** and the **speed**
+* the text the firmware prints on USB port 1, and a box to type the
+  commands below
+
+Without `--gui` it runs in the terminal only. You see what the board prints
+on USB port 1 (USART1), like a serial monitor:
 
 ```
 RRC v1.2 testbed demo, SYSCLK 168 MHz
@@ -37,7 +67,8 @@ t=1 s bat=12002 mV enc0=0 enc1=0 disarmed
 ```
 
 Lines starting with `[sim]` come from the simulator, not from your firmware.
-While it runs you can type a command and press Enter:
+While it runs you can type a command and press Enter (in the window: in the
+box at the bottom):
 
 | Command | What it does |
 |---|---|
@@ -46,6 +77,8 @@ While it runs you can type a command and press Enter:
 | `reset` | press the RESET button |
 | `push yaw 0.05` | push the frame by hand: 0.05 N m on the yaw joint for 0.1 s (`push pitch -0.02`) |
 | `state` | print the true angles, motor speeds, ESC pulses, bus voltage... |
+| `pause` / `resume` | stop and restart the simulated clock |
+| `speed 0.5` | half real time (`speed 1` = real time, `speed 0` = as fast as possible) |
 | `quit` | stop (Ctrl+C works too) |
 
 ## 3. Run your own firmware
@@ -53,8 +86,10 @@ While it runs you can type a command and press Enter:
 Build in CubeIDE as usual, then point the simulator at the file in `Debug/`:
 
 ```
-python -m testbed_sim "C:\path\to\drone_fw\Debug\drone_fw.elf"
+python -m testbed_sim "C:\path\to\drone_fw\Debug\drone_fw.elf" --gui
 ```
+
+or drag the file onto `start_simulator.bat`.
 
 Use the `.elf` when you can: then a crash is reported with the function name.
 The simulator warns you when the firmware does something the real board
@@ -65,6 +100,8 @@ Useful options (`python -m testbed_sim --help` lists all):
 
 | Option | Meaning |
 |---|---|
+| `--gui` | open the simulator window |
+| `--check` | check the installation and stop |
 | `--config my_rig.toml` | your measured values instead of the guesses (see below) |
 | `--set power.volts=11.1` | change one value from the command line |
 | `--duration 10` | stop after 10 simulated seconds |
@@ -84,7 +121,15 @@ python tbbridge.py log --port socket://localhost:5333 --arm --excite prbs --base
 ```
 
 That is exactly how you would log the real rig, so a script that works here
-works on the testbed. In your own code:
+works on the testbed. To close the loop, give tbbridge a controller. The
+example PID turns the yaw joint to 0.5 rad (watch it in the `--gui` window):
+
+```
+python tbbridge.py run --port socket://localhost:5333 --arm --controller examples/controller_template.py:HoldAngle --duration 10
+```
+
+Copy `examples/controller_template.py` to start your own controller. In your
+own code:
 
 ```python
 import serial
@@ -158,13 +203,14 @@ and run with `--config my_rig.toml` (or `Testbed(fw, config="my_rig.toml")`,
 python -m unittest discover tests
 ```
 
-7 tests, about 10 seconds: boot, telemetry timing, closed-loop yaw and pitch,
-command timeout, KEY1 kill, watchdog reset, crash report, and the
-firmware-free model.
+10 tests, about 15 seconds: boot, telemetry timing, closed-loop yaw and pitch,
+command timeout, KEY1 kill, watchdog reset, crash report, the firmware-free
+model, the console commands and the example controller.
 
 ## Folder map
 
 ```
+start_simulator.bat double-click to open the simulator window (Windows)
 testbed_sim/        the simulator (Python package)
   core.py           CPU, memory, time, interrupts
   periph/           STM32F407 peripherals: RCC, GPIO, timers, UART, I2C, DMA, ADC, NVIC...
@@ -173,7 +219,8 @@ testbed_sim/        the simulator (Python package)
   board.py          Hiwonder board wiring (which pin goes where)
   plant.py          the rig without firmware, for the AI work
   api.py            Testbed class
-  bridge.py         USB ports to TCP / pty, real-time pacing
+  bridge.py         USB ports to TCP / pty, real-time pacing, console commands
+  gui.py            the --gui window
   default_config.toml  every physical number
 tools/              tbbridge.py, tbproto.py and the controller template, set up for the simulator
 examples/           short scripts to start from

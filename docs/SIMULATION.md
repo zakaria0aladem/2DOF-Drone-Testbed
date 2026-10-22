@@ -261,3 +261,5 @@ motor ones, and the encoder readings (in telemetry, q1/q2) for the angles.
 | `running at 0.8x real time` | the PC is slower than the simulated board; results are still exact |
 | `Address already in use` | another simulator is still running; close it or use `--port2 5335` |
 | tbbridge says `no HELLO from board` | the firmware doesn't answer on USART3 yet (still booting?), or the port name is wrong |
+| `a Python package is missing` | in the `sim` folder run `pip install -r requirements.txt` |
+| something else doesn't work | run `python -m testbed_sim --check`: it tests the installation step by step and says what to fix |

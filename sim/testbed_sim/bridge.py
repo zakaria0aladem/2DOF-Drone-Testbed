@@ -120,15 +120,12 @@ class _Port:
             os.close(self.pty_slave)
 
 
-def _stdin_lines():
-    """Lines typed in the console, read on a thread so the sim never waits."""
-    q = queue.Queue()
-
+def _stdin_lines(q):
+    """Put lines typed in the console into q, on a thread so the sim never waits."""
     def reader():
         for line in sys.stdin:
             q.put(line.strip())
     threading.Thread(target=reader, daemon=True).start()
-    return q
 
 
 HELP = """commands (type and press Enter):
@@ -137,54 +134,112 @@ HELP = """commands (type and press Enter):
   reset            press the board's RESET button
   push yaw 0.05    push the frame: torque in N m for 0.1 s (yaw or pitch)
   state            print the true rig state
+  pause / resume   stop and restart the simulated clock
+  speed 0.5        0.5 = half real time, 1 = real time, 0 = as fast as possible
   quit             stop the simulator"""
 
 
+class _Run:
+    """What the console commands can change while serve() runs."""
+
+    def __init__(self, speed):
+        self.speed = speed
+        self.paused = False
+        self.held = set()
+
+
 def serve(tb, ports, console="USART1", speed=1.0, duration=None, step=0.0005,
-          interactive=True, out=sys.stdout):
+          interactive=True, out=None, commands=None, on_tick=None):
     """Run the testbed and bridge its USB ports until Ctrl+C / quit / duration.
 
     ports: {"USART3": {"tcp": 5333, "pty": False}, ...}
-    console: UART whose text is printed here (None for none)."""
-    log = tb._log
+    console: UART whose text is printed here (None for none).
+    commands: a queue.Queue of command lines (the same words as typed in the
+    console), for a window or another thread to drive the simulator.
+    on_tick: fn(tb, run) called after every step, in this thread."""
+    out = out or sys.stdout
+    plain_log = tb._log
+    # The firmware's text is printed a whole line at a time, so a [sim] message
+    # never lands in the middle of one. A line without a newline (a prompt) is
+    # printed after 0.3 s anyway.
+    held_text = [""]                          # end of the console text, no newline yet
+    held_since = [0.0]
+    line_open = [False]                       # printed text not ended by a newline yet
+
+    def console_out(text, force=False):
+        text = held_text[0] + text
+        cut = text.rfind("\n") + 1
+        if force:
+            cut = len(text)
+        if cut:
+            out.write(text[:cut])
+            out.flush()
+            line_open[0] = not text[:cut].endswith("\n")
+        if text[cut:] and not held_text[0]:
+            held_since[0] = time.perf_counter()
+        held_text[0] = text[cut:]
+
+    def log(s):
+        if line_open[0]:                      # keep [sim] lines off the firmware's line
+            out.write("\n")
+            out.flush()
+            line_open[0] = False
+        plain_log(s)
+    tb._log = log
     bridges = []
     for uart, o in ports.items():
         b = _Port(tb, uart, o.get("tcp"), o.get("pty", False), log)
         bridges.append(b)
         log(f"[sim] board USB port {'1' if uart == 'USART1' else '2'} ({uart}): "
             f"{b.describe()}")
-    cmds = _stdin_lines() if interactive else None
+    cmds = commands if commands is not None else queue.Queue()
     if interactive:
+        _stdin_lines(cmds)
         log(HELP)
-    held = set()
+    run = _Run(speed)
     wall0 = time.perf_counter()
     sim0 = tb.t
-    win_wall, win_sim = wall0, tb.t          # speed measured over the last ~10 s
+    pace_wall, pace_sim = wall0, sim0         # pacing restarts after a pause or speed change
+    win_wall, win_sim = wall0, tb.t           # speed measured over the last ~10 s
     last_report = 0.0
     try:
         while duration is None or tb.t - sim0 < duration:
+            while not cmds.empty():
+                was = (run.paused, run.speed)
+                if _command(tb, cmds.get(), run, log) == "quit":
+                    return
+                if (run.paused, run.speed) != was:
+                    pace_wall, pace_sim = time.perf_counter(), tb.t
+                    win_wall, win_sim = pace_wall, tb.t
+            if run.paused:
+                for b in bridges:
+                    b.poll()
+                if on_tick:
+                    on_tick(tb, run)
+                time.sleep(0.02)
+                continue
             tb.run(step)
             for b in bridges:
                 b.poll()
             if console and console not in ports:
                 text = tb.read_text(console)
                 if text:
-                    out.write(text)
-                    out.flush()
-            while cmds is not None and not cmds.empty():
-                if _command(tb, cmds.get(), held, log) == "quit":
-                    return
+                    console_out(text)
+                elif held_text[0] and time.perf_counter() - held_since[0] > 0.3:
+                    console_out("", force=True)
+            if on_tick:
+                on_tick(tb, run)
             # pace to the wall clock
-            if speed:
-                ahead = (tb.t - sim0) / speed - (time.perf_counter() - wall0)
+            if run.speed:
+                ahead = (tb.t - pace_sim) / run.speed - (time.perf_counter() - pace_wall)
                 if ahead > 0:
                     time.sleep(ahead)
                 elif ahead < -0.5:
-                    wall0 += -ahead - 0.5          # don't try to catch up forever
+                    pace_wall += -ahead - 0.5      # don't try to catch up forever
                 now = time.perf_counter()
                 if now - win_wall >= 10:
                     rate = (tb.t - win_sim) / (now - win_wall)
-                    if rate < 0.95 * speed and now - last_report > 30:
+                    if rate < 0.95 * run.speed and now - last_report > 30:
                         log(f"[sim] note: running at {rate:.2f}x real time "
                             f"(the PC can't keep up; timing seen by PC programs is stretched)")
                         last_report = now
@@ -192,25 +247,40 @@ def serve(tb, ports, console="USART1", speed=1.0, duration=None, step=0.0005,
     except KeyboardInterrupt:
         pass
     finally:
+        if held_text[0]:
+            console_out("", force=True)
+        tb._log = plain_log
         for b in bridges:
             b.close()
 
 
-def _command(tb, line, held, log):
+def _command(tb, line, run, log):
     w = line.lower().split()
     if not w:
         return None
+    held = run.held
     try:
         if w[0] in ("k1", "k2"):
             k = int(w[0][1])
             tb.board.press_key(k, True)
             tb.m.after(int(0.2 * PS_PER_S), lambda: tb.board.press_key(k, False), world=True)
-        elif w[0] == "hold" and len(w) > 1:
-            tb.board.press_key(int(w[1][-1]), True)
-            held.add(w[1])
-        elif w[0] == "release" and len(w) > 1:
-            tb.board.press_key(int(w[1][-1]), False)
-            held.discard(w[1])
+        elif w[0] in ("hold", "release") and len(w) > 1:
+            k = int(w[1][-1])
+            if k not in (1, 2):
+                raise ValueError(k)
+            tb.board.press_key(k, w[0] == "hold")
+            (held.add if w[0] == "hold" else held.discard)(k)
+        elif w[0] == "pause":
+            run.paused = True
+            log(f"[sim] paused at t={tb.t:.3f} s (type resume to go on)")
+        elif w[0] in ("resume", "run", "go"):
+            if run.paused:
+                run.paused = False
+                log("[sim] running again")
+        elif w[0] == "speed" and len(w) > 1:
+            run.speed = max(0.0, float(w[1]))
+            log("[sim] speed: " + (f"{run.speed:g}x real time" if run.speed
+                                   else "as fast as possible"))
         elif w[0] == "reset":
             tb.reset()
         elif w[0] == "push":

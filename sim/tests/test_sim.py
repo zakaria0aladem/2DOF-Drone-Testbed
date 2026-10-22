@@ -1,10 +1,10 @@
 """Checks that the simulator still behaves like the board.
 
     cd sim
-    python -m unittest discover tests        (about a minute)
+    python -m unittest discover tests        (about 20 seconds)
 
-They run the demo firmware (firmware_demo/prebuilt/testbed_demo.bin) and
-the firmware-free plant.
+They run the demo firmware (firmware_demo/prebuilt/testbed_demo.bin), the
+firmware-free plant, the console commands and the example controller.
 """
 import os
 import sys
@@ -144,6 +144,44 @@ class Plant(unittest.TestCase):
     def test_plant_repeatable(self):
         a = [RigEnv(seed=3).rollout([[1250, 1300, 1300, 1250]] * 200)[-1] for _ in range(2)]
         self.assertEqual(a[0], a[1])
+
+    def test_controller_template_reaches_yaw_target(self):
+        sys.path.insert(0, os.path.join(os.path.dirname(HERE), "tools", "examples"))
+        from controller_template import HoldAngle
+        ctrl = HoldAngle(q_ref=0.5)
+        ctrl.us_max = 1400                                  # the demo firmware's limit
+        env = RigEnv(noise=False)
+        o = env.reset()
+        for _ in range(int(3 / env.dt)):
+            o = env.step(ctrl.step(o, o.t))
+        self.assertAlmostEqual(o.true_q[0], 0.5, delta=0.03)
+
+
+class Console(unittest.TestCase):
+    def test_commands_and_clean_lines(self):
+        import io
+        import queue
+        from testbed_sim.bridge import serve
+        tb = Testbed(FW, log=lambda s: None)
+        cmds = queue.Queue()
+        for c in ("speed 0", "push yaw 0.05", "hold k2", "pause", "resume"):
+            cmds.put(c)
+        out = io.StringIO()
+        serve(tb, {"USART3": {"tcp": 0}}, speed=1.0, duration=1.2, interactive=False,
+              out=out, commands=cmds)
+        self.assertGreater(tb.state()["yaw"], 0.02)          # the push moved the frame
+        self.assertIn("\nt=1 s bat=12002 mV", out.getvalue())   # firmware lines stay whole
+
+    def test_command_line_runs_demo_without_arguments(self):
+        import contextlib
+        import io
+        from testbed_sim.__main__ import main
+        err = io.StringIO()
+        with contextlib.redirect_stdout(io.StringIO()) as out, contextlib.redirect_stderr(err):
+            code = main(["--duration", "1.2", "--fast", "--no-input", "--port2", "0"])
+        self.assertEqual(code, 0)
+        self.assertIn("running the demo firmware", err.getvalue())
+        self.assertIn("QMI8658 found", out.getvalue())
 
 
 if __name__ == "__main__":

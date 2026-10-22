@@ -16,21 +16,38 @@ for 100 ms.
 
 
 class HoldAngle:
-    """Toy PD on joint 1 using a differential between motor pairs.
+    """Toy PID on joint 1 (yaw) using a differential between motor pairs.
 
-    The motor-to-joint mapping (mix) depends on how the frame sits on the
-    arm; flip signs until a positive u moves q1 positive.
+    mix (1, -1, -1, 1) speeds up ESC1+ESC4 and slows ESC2+ESC3: their
+    propellers spin the same way, so the drag torque turns the frame in yaw.
+    That fits the simulator's default motor order; on the real rig check how
+    the ESCs are wired and flip signs until a positive u moves q1 positive.
+    The integral term (ki) is needed because joint friction stops a pure PD
+    short of q_ref (rad).
+
+        python tbbridge.py run --port socket://localhost:5333 --arm
+            --controller examples/controller_template.py:HoldAngle --duration 10
     """
 
-    def __init__(self, q_ref=0.0, base=1250.0, kp=60.0, kd=8.0, mix=(1, 1, -1, -1)):
-        self.q_ref, self.base, self.kp, self.kd, self.mix = q_ref, base, kp, kd, mix
+    def __init__(self, q_ref=0.5, base=1250.0, kp=300.0, ki=100.0, kd=40.0,
+                 mix=(1, -1, -1, 1), i_max=150.0):
+        self.q_ref, self.base, self.mix = q_ref, base, mix
+        self.kp, self.ki, self.kd, self.i_max = kp, ki, kd, i_max
+        self.us_min, self.us_max = 1000, 2000
+        self.integral = 0.0
+        self.t_prev = None
 
     def reset(self, hello):
         self.us_min, self.us_max = hello.us_min, hello.us_max
+        self.integral = 0.0
+        self.t_prev = None
 
     def step(self, obs, t):
         e = self.q_ref - obs.q[0]
-        u = self.kp * e - self.kd * obs.dq[0]
+        dt = 0.0 if self.t_prev is None else t - self.t_prev
+        self.t_prev = t
+        self.integral = min(self.i_max, max(-self.i_max, self.integral + self.ki * e * dt))
+        u = self.kp * e + self.integral - self.kd * obs.dq[0]
         return [min(self.us_max, max(self.us_min, self.base + m * u)) for m in self.mix]
 
 

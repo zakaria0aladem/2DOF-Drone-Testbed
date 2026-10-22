@@ -20,7 +20,7 @@ class Testbed:
     def __init__(self, firmware, config=None, overrides=None, log=print, quiet=False):
         self.cfg = config_mod.load(config, overrides)
         self._log = (lambda s: None) if quiet else log
-        self.board = Board(self.cfg, self._log)
+        self.board = Board(self.cfg, lambda s: self._log(s))   # so serve() can redirect it
         self.m = self.board.m
         self.rig = self.board.rig
         segs, syms = load_firmware(firmware)
