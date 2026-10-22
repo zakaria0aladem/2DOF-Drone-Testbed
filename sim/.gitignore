@@ -1,0 +1,4 @@
+firmware_demo/_deps/
+firmware_demo/build/
+tools/runs/
+*.csv

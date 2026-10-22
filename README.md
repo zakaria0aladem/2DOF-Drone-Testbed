@@ -7,6 +7,7 @@ Shared repo for a 2-DOF drone testbed on the Hiwonder ROS Robot Controller (STM3
 | `firmware/` | STM32CubeIDE project for the board | both |
 | `ai/piml/` | Physics-informed ML | Zakaria |
 | `ai/deepc/` | DeepC (data-driven predictive control) | Amr |
+| `sim/` | Simulator: runs the board firmware on a PC with a simulated testbed ([how to use](sim/README.md)) | both |
 | `docs/` | Reports, figures, notes | both |
 
 Board datasheets: [docs/datasheets](docs/datasheets). Testbed parts (motors, encoders, ESC): [docs/hardware](docs/hardware). Hiwonder lessons: [docs/hiwonder-tutorials](docs/hiwonder-tutorials).

@@ -1,0 +1,109 @@
+# Testbed simulator configuration: every physical number in one place.
+#
+# Copy this file (e.g. to my_rig.toml), change what you measured, and pass it
+# with --config my_rig.toml or Testbed(config="my_rig.toml"). You only need to
+# list the values you change; everything else comes from here.
+#
+# Each value is marked:
+#   [datasheet]   from a datasheet in docs/datasheets, or the part's label/spec (docs/hardware)
+#   [project]     decided or confirmed in the project (pin map, wiring)
+#   [placeholder] a guess. HOW TO MEASURE is in docs/SIMULATION.md, section 6.
+
+[sim]
+physics_dt = 0.00025          # s, rig physics step (4 kHz)
+physics_event_s = 0.001       # s, how often the physics catches up with the firmware
+seed = 1                      # random seed for sensor noise (same seed = same run)
+
+[board]                       # Hiwonder ROS Robot Controller v1.2
+hse_hz = 16_000_000           # [project] 16 MHz crystal
+lse = false                   # [placeholder] no 32.768 kHz crystal modelled
+lsi_hz = 32_000               # [datasheet] typical; the real LSI is 17-47 kHz (IWDG timing!)
+key1_pin = "PE1"              # [project] KEY1, pull-up, pressed = low
+key2_pin = "PE0"              # [project] KEY2
+led_pin = "PE10"              # [project] active low
+buzzer_pin = "PA8"            # [project] passive buzzer through a transistor
+battery_adc_pin = "PB0"       # [project] ADC1_IN8, 100k/10k divider
+battery_divider = 11.0        # [project]
+
+[power]                       # bench supply UNI-T UTP3315TFL-II
+volts = 12.0                  # [project] set voltage
+current_limit_a = 5.0         # [placeholder] what you set on the PSU; motors sag above it
+board_current_a = 0.15        # [placeholder] board + IMU + encoders
+
+[esc]                         # 4-in-1 ESC "DMHC 160720014INJ" (no datasheet; BLHeli_S-like)
+signal_pins = ["PA11", "PB4", "PC8", "PC9"]   # [project] ESC1..ESC4
+throttle_min_us = 1050        # [placeholder] pulse where the motor starts to spin
+throttle_max_us = 1950        # [placeholder] pulse for full throttle
+arm_below_us = 1050           # [placeholder] ESC arms after seeing pulses below this...
+arm_time_s = 1.0              # [placeholder] ...for this long after power-up
+signal_timeout_s = 0.25       # [placeholder] no valid pulse for this long -> motor stops, re-arm needed
+pulse_valid_us = [800, 2200]  # [placeholder] pulses outside this are ignored
+max_frame_hz = 500            # [placeholder] faster PWM than this is not accepted
+startup_delay_s = 0.12        # [placeholder] sensorless start-up time from standstill
+active_braking = true         # [placeholder] BLHeli "damped light": motor brakes when throttle drops
+
+[motor]                       # Cobra CM2204/1960
+kv_rpm_per_v = 1960           # [datasheet]
+resistance_ohm = 0.113        # [placeholder] winding resistance, typical for a 2204 1960 KV
+no_load_current_a = 0.6       # [placeholder]
+rotor_inertia = 1.0e-5        # [placeholder] kg m^2, bell + prop
+# ESC1..ESC4: position in the body frame (x forward, y left, metres) and spin
+# direction (+1 = counter-clockwise seen from above, -1 = clockwise).
+# Default is Betaflight's quad-X order (1 rear-right, 2 front-right,
+# 3 rear-left, 4 front-left) with props-in spin. [placeholder: check your wiring]
+positions = [[-0.078, -0.078], [0.078, -0.078], [-0.078, 0.078], [0.078, 0.078]]
+spin = [-1, 1, 1, -1]
+
+[prop]
+thrust_coeff = 1.2e-6         # [placeholder] N per (rad/s)^2, thrust = k * w^2 (5-inch prop)
+torque_coeff = 1.9e-8         # [placeholder] N m per (rad/s)^2, drag torque = k * w^2
+
+[frame]                       # moving part on the pitch joint (quad frame + motors + board)
+mass_kg = 0.45                # [placeholder]
+cg_below_pitch_axis_m = 0.005 # [placeholder] >0 hangs like a pendulum, <0 is top-heavy
+cg_forward_m = 0.0            # [placeholder] CG offset along body x from the pitch axis
+inertia_xx = 0.0045           # [placeholder] kg m^2 about the pivot, body x (roll axis)
+inertia_yy = 0.0045           # [placeholder] kg m^2 about the pitch axis
+inertia_zz = 0.0080           # [placeholder] kg m^2 about the body z axis
+yaw_arm_inertia = 0.0020      # [placeholder] kg m^2, C-arm + pitch bearing turning with yaw
+
+[joints.yaw]                  # vertical axis, encoder on TIM5 (PA0/PA1)
+viscous = 0.004               # [placeholder] N m s/rad (bearing + air drag)
+coulomb = 0.006               # [placeholder] N m, sliding friction
+stiction = 0.010              # [placeholder] N m needed to start moving
+limits = []                   # [placeholder] empty = turns freely; e.g. [-3.0, 3.0] rad
+start_angle = 0.0             # rad at power-up (the encoder reads 0 here)
+
+[joints.pitch]                # horizontal axis, encoder on TIM2 (PA15/PB3)
+viscous = 0.003
+coulomb = 0.004
+stiction = 0.007
+limits = [-0.6, 0.6]          # [placeholder] mechanical stops, rad
+start_angle = 0.0
+
+[encoders]                    # US Digital E8T-720, 720 CPR quadrature (2880 counts/rev in x4)
+cpr = 720                     # [datasheet]
+yaw_pins = ["PA0", "PA1"]     # [project] Motor-1 port, TIM5
+pitch_pins = ["PA15", "PB3"]  # [project] Motor-2 port, TIM2
+yaw_sign = 1                  # [placeholder] +1 if a positive joint angle counts up
+pitch_sign = 1
+
+[imu]                         # QMI8658A on I2C2 (PB10/PB11), INT on PB12
+i2c_address = 0x6A            # [project]
+int_pin = "PB12"              # [project]
+int_source = 2                # [placeholder] which QMI INT pin is wired to PB12 (2 = DRDY)
+# Mounting: rows of the rotation from body axes to IMU chip axes, and the chip
+# position relative to the pitch pivot (body frame, metres).
+rotation = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]  # [placeholder]
+position = [0.0, 0.0, 0.02]   # [placeholder]
+accel_noise_ug_rthz = 150     # [datasheet] noise density
+gyro_noise_mdps_rthz = 13     # [datasheet]
+accel_bias_mg = [25, -40, 60] # [placeholder] datasheet allows up to +-100 mg
+gyro_bias_dps = [0.6, -1.1, 0.4]  # [placeholder] datasheet allows up to +-10 dps
+accel_scale_error = [0.01, -0.015, 0.02]   # [placeholder] datasheet: +-6 %
+gyro_scale_error = [0.005, -0.01, 0.008]   # [placeholder] datasheet: +-3 %
+gyro_bias_walk_dps_rts = 0.002    # [placeholder] slow bias drift
+# Motor vibration shaking the IMU: acceleration amplitude (m/s^2) per motor at
+# 1000 rad/s, scales with speed squared, at the motor's rotation frequency.
+vibration_ms2 = 1.5           # [placeholder] depends a lot on prop balance and mounting
+temperature_c = 30.0

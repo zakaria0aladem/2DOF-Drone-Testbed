@@ -1,0 +1,4 @@
+# Testbed simulator. Install with:  pip install -r requirements.txt
+unicorn==2.1.4          # CPU emulator (the simulator relies on this exact version)
+pyserial>=3.5           # for tools/tbbridge.py and your own PC programs
+tomli>=2.0; python_version < "3.11"   # reads the .toml config on older Pythons
