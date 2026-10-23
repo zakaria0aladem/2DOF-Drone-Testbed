@@ -4,10 +4,6 @@ How the testbed is wired to the Hiwonder ROS Robot Controller v1.2 (2026-10-23).
 
 ## Power
 
-```
-Bench PSU 12.0 V ──┬── XT60 ──> 4-in-1 ESC ──> 4 motors   (motor current)
-   (+ and – only)  └── screw terminal ──> Hiwonder board  (logic current, < 1 A)
-```
 
 - PSU at **12.0 V**, never above **12.6 V** (the board's input range is 5–12.6 V). Later: a **3S LiPo** (12.6 V full).
 - Use the PSU's red **+** and black **–** only. The green GND terminal is mains earth, leave it empty.
