@@ -1,0 +1,14 @@
+# STM32CubeIDE build output: rebuilt on every build, never commit
+Debug/
+Release/
+*.o
+*.d
+*.su
+*.cyclo
+*.elf
+*.map
+*.list
+
+# Personal IDE settings
+.settings/
+*.launch
