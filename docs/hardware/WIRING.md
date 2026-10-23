@@ -29,9 +29,9 @@ Every M port has the same pinout:
 | M port | Used for | Pin 3 | Pin 4 | Timer | Pin 5 | Pin 2 |
 |---|---|---|---|---|---|---|
 | Motor 1 | Yaw encoder | A → PA0 | B → PA1 | TIM5 encoder mode | 5 V to encoder | GND to encoder |
-| Motor 2 | Pitch encoder | A → PA15 | B → PB3 | TIM2 encoder mode | 5 V to encoder | GND to encoder |
+| Motor 2 | Pitch encoder | A → PA15 | B → PB3 | TIM2 encoder mode | not used | not used |
 | Motor 3 | ESC 1 + ESC 2 | PB6 | PB7 | TIM4 CH1 / CH2 PWM | not used | ESC GND |
-| Motor 4 | ESC 3 + ESC 4 | PB4 | PB5 | TIM3 CH1 / CH2 PWM | not used | ESC GND |
+| Motor 4 | ESC 3 + ESC 4 | PB4 | PB5 | TIM3 CH1 / CH2 PWM | not used | not used |
 
 - Encoder cable order is `5V A G B`, the port is `G A B 5V` on pins 2–5. Make an adapter cable with a PH2.0 6-pin plug.
 - ESCs get **signal + GND only**.
