@@ -4,10 +4,6 @@ How the testbed is wired to the Hiwonder ROS Robot Controller v1.2 (2026-10-23).
 
 ## Power
 
-```
-Bench PSU 12.0 V ──┬── XT60 ──> 4-in-1 ESC ──> 4 motors   (motor current)
-   (+ and – only)  └── screw terminal ──> Hiwonder board  (logic current, < 1 A)
-```
 
 - PSU at **12.0 V**, never above **12.6 V** (the board's input range is 5–12.6 V). Later: a **3S LiPo** (12.6 V full).
 - Use the PSU's red **+** and black **–** only. The green GND terminal is mains earth, leave it empty.
@@ -33,9 +29,9 @@ Every M port has the same pinout:
 | M port | Used for | Pin 3 | Pin 4 | Timer | Pin 5 | Pin 2 |
 |---|---|---|---|---|---|---|
 | Motor 1 | Yaw encoder | A → PA0 | B → PA1 | TIM5 encoder mode | 5 V to encoder | GND to encoder |
-| Motor 2 | Pitch encoder | A → PA15 | B → PB3 | TIM2 encoder mode | 5 V to encoder | GND to encoder |
+| Motor 2 | Pitch encoder | A → PA15 | B → PB3 | TIM2 encoder mode | not used | not used |
 | Motor 3 | ESC 1 + ESC 2 | PB6 | PB7 | TIM4 CH1 / CH2 PWM | not used | ESC GND |
-| Motor 4 | ESC 3 + ESC 4 | PB4 | PB5 | TIM3 CH1 / CH2 PWM | not used | ESC GND |
+| Motor 4 | ESC 3 + ESC 4 | PB4 | PB5 | TIM3 CH1 / CH2 PWM | not used | not used |
 
 - Encoder cable order is `5V A G B`, the port is `G A B 5V` on pins 2–5. Make an adapter cable with a PH2.0 6-pin plug.
 - ESCs get **signal + GND only**.
