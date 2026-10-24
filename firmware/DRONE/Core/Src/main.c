@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "bsp_led.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -94,7 +95,9 @@ int main(void)
   MX_I2C2_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-
+  LED_Init();
+  /*0.5s on and 0.5s off*/
+  LED_Blink(1000);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -104,6 +107,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  LED_Update();
   }
   /* USER CODE END 3 */
 }
@@ -240,7 +244,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET);
