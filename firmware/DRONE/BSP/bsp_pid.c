@@ -18,11 +18,11 @@
 #define KD				0.0f	/* us per deg/s of rotation rate */
 
 #define DT_S			0.002f	/* PID_Update runs from TIM6 at 500 Hz       */
-#define BASE_US			1150	/* throttle both sides get before correction */
+#define BASE_US			1200	/* throttle both sides get before correction */
 #define OUT_LIMIT		150.0f	/* largest correction [us]                   */
 #define I_LIMIT			100.0f	/* largest integral part [us]                */
 #define MAX_US			1400	/* ceiling for any motor while tuning        */
-#define CUTOFF_DEG		40.0f	/* motors stop beyond this angle             */
+#define CUTOFF_DEG		60.0f	/* motors stop beyond this angle             */
 
 /* motors on each side of the pitch axis, numbered as in ESC_Set();
    if the rig tilts away from the target, swap the two sides */
