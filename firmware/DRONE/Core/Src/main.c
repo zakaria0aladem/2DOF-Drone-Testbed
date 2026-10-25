@@ -136,26 +136,20 @@ int main(void)
 
 	  yaw_ang = ENC_GetDeg(ENC_YAW);
 	  ESC_Update();       // PID: finishes the ESC arming sequence
-	  PID_Print();        // PID
+	       // PID
 	  //LED_Update();
-	 /* LED_Update();
+	  LED_Update();
 
 	  if(ESC_IsArmed()){
 		  ESC_Set(1, 1200);
 		  ESC_Set(3, 1200);
 		  ESC_Set(4, 1200);
 		  ESC_Set(2, 1200);
-	  }*/
-	  if(yaw_ang > 6.0f){
-		  LED_Blink(1000);
-		  LED_Update();
 	  }
-	  else{
-		  LED_Off();
-	  }
+
+
 
   }
-
   /* USER CODE END 3 */
 }
 
