@@ -23,7 +23,11 @@
 /* USER CODE BEGIN Includes */
 #include "bsp_led.h"
 #include "bsp_esc.h"
+<<<<<<< Updated upstream
 #include "bsp_enc.h"
+=======
+#include "bsp_imu.h"      // IMU
+>>>>>>> Stashed changes
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -111,7 +115,11 @@ int main(void)
   /* USER CODE BEGIN 2 */
   LED_Init();
   ESC_Init();
+<<<<<<< Updated upstream
   ENC_Init();
+=======
+  IMU_Init();             // IMU
+>>>>>>> Stashed changes
   /*0.5s on and 0.5s off*/
   LED_Blink(1000);
   /* USER CODE END 2 */
@@ -123,9 +131,16 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+<<<<<<< Updated upstream
 	  yaw = ENC_GetDeg(ENC_YAW);
 	  //LED_Update();
 	 /* ESC_Update();
+=======
+	  LED_Update();
+	  ESC_Update();
+	  IMU_Update();       // IMU
+	  IMU_Print();        // IMU
+>>>>>>> Stashed changes
 	  if(ESC_IsArmed()){
 		  ESC_Set(1, 1200);
 		  ESC_Set(3, 1200);
@@ -525,7 +540,11 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+extern UART_HandleTypeDef huart3;
+int __io_putchar(int ch){
+	HAL_UART_Transmit(&huart3, (uint8_t*)&ch, 1, HAL_MAX_DELAY);
+	return ch;
+}
 /* USER CODE END 4 */
 
 /**

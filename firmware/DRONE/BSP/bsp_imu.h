@@ -11,9 +11,9 @@
 #include <stdint.h>
 
 typedef struct {
-	float ax, ay, az;	/* acceleration [g]                   */
-	float gx, gy, gz;	/* angular rate [deg/s]               */
-	float roll, pitch;	/* angle from the accelerometer [deg] */
+	float ax, ay, az;	/* acceleration [g]                          */
+	float gx, gy, gz;	/* angular rate, bias removed [deg/s]        */
+	float roll, pitch;	/* angle from the complementary filter [deg] */
 } IMU_Data_t;
 
 uint8_t IMU_Init(void);
