@@ -55,7 +55,8 @@ TIM_HandleTypeDef htim6;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
-volatile float yaw =0;
+volatile float yaw_ang =0;
+volatile float pitch_ang =0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -132,7 +133,8 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  yaw = ENC_GetDeg(ENC_YAW);
+
+	  yaw_ang = ENC_GetDeg(ENC_YAW);
 	  ESC_Update();       // PID: finishes the ESC arming sequence
 	  PID_Print();        // PID
 	  //LED_Update();
@@ -144,7 +146,7 @@ int main(void)
 		  ESC_Set(4, 1200);
 		  ESC_Set(2, 1200);
 	  }*/
-	  if(yaw > 6.0f){
+	  if(yaw_ang > 6.0f){
 		  LED_Blink(1000);
 		  LED_Update();
 	  }
@@ -153,6 +155,7 @@ int main(void)
 	  }
 
   }
+
   /* USER CODE END 3 */
 }
 
