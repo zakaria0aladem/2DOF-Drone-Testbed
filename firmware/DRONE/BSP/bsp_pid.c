@@ -32,7 +32,7 @@
 #define MOTOR_BACK_2	4
 
 /* PD3 level when the "Motor ON/OFF" switch is ON, check with PID_Print */
-#define SWITCH_ON_LEVEL	GPIO_PIN_RESET
+#define SWITCH_ON_LEVEL	GPIO_PIN_SET
 
 #define PRINT_PERIOD_MS	100
 

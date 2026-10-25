@@ -139,14 +139,14 @@ int main(void)
 	       // PID
 	  //LED_Update();
 	  LED_Update();
-
+/*
 	  if(ESC_IsArmed()){
 		  ESC_Set(1, 1200);
 		  ESC_Set(3, 1200);
 		  ESC_Set(4, 1200);
 		  ESC_Set(2, 1200);
 	  }
-
+*/
 
 
   }
