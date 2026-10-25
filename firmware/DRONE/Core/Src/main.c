@@ -23,11 +23,9 @@
 /* USER CODE BEGIN Includes */
 #include "bsp_led.h"
 #include "bsp_esc.h"
-<<<<<<< Updated upstream
+
 #include "bsp_enc.h"
-=======
 #include "bsp_imu.h"      // IMU
->>>>>>> Stashed changes
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -115,11 +113,9 @@ int main(void)
   /* USER CODE BEGIN 2 */
   LED_Init();
   ESC_Init();
-<<<<<<< Updated upstream
+
   ENC_Init();
-=======
   IMU_Init();             // IMU
->>>>>>> Stashed changes
   /*0.5s on and 0.5s off*/
   LED_Blink(1000);
   /* USER CODE END 2 */
@@ -130,32 +126,30 @@ int main(void)
   {
     /* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
-<<<<<<< Updated upstream
-	  yaw = ENC_GetDeg(ENC_YAW);
-	  //LED_Update();
-	 /* ESC_Update();
-=======
-	  LED_Update();
-	  ESC_Update();
-	  IMU_Update();       // IMU
-	  IMU_Print();        // IMU
->>>>>>> Stashed changes
-	  if(ESC_IsArmed()){
-		  ESC_Set(1, 1200);
-		  ESC_Set(3, 1200);
-		  ESC_Set(4, 1200);
-		  ESC_Set(2, 1200);
-	  }*/
-	  if(yaw > 6.0f){
-		  LED_Blink(1000);
+	    /* USER CODE BEGIN 3 */
+		  yaw = ENC_GetDeg(ENC_YAW);
+		  IMU_Update();       // IMU
+		  IMU_Print();        // IMU
+		  //LED_Update();
+		 /* ESC_Update();
 		  LED_Update();
-	  }
-	  else{
-		  LED_Off();
-	  }
 
-  }
+		  if(ESC_IsArmed()){
+			  ESC_Set(1, 1200);
+			  ESC_Set(3, 1200);
+			  ESC_Set(4, 1200);
+			  ESC_Set(2, 1200);
+		  }*/
+		  if(yaw > 6.0f){
+			  LED_Blink(1000);
+			  LED_Update();
+		  }
+		  else{
+			  LED_Off();
+		  }
+
+	  }
+	  /* USER CODE END 3 */
   /* USER CODE END 3 */
 }
 
