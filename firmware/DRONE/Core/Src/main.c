@@ -23,7 +23,6 @@
 /* USER CODE BEGIN Includes */
 #include "bsp_led.h"
 #include "bsp_esc.h"
-
 #include "bsp_enc.h"
 #include "bsp_imu.h"      // IMU
 /* USER CODE END Includes */
@@ -126,30 +125,29 @@ int main(void)
   {
     /* USER CODE END WHILE */
 
-	    /* USER CODE BEGIN 3 */
-		  yaw = ENC_GetDeg(ENC_YAW);
-		  IMU_Update();       // IMU
-		  IMU_Print();        // IMU
-		  //LED_Update();
-		 /* ESC_Update();
+    /* USER CODE BEGIN 3 */
+	  yaw = ENC_GetDeg(ENC_YAW);
+	  IMU_Update();       // IMU
+	  IMU_Print();        // IMU
+	  //LED_Update();
+	 /* ESC_Update();
+	  LED_Update();
+
+	  if(ESC_IsArmed()){
+		  ESC_Set(1, 1200);
+		  ESC_Set(3, 1200);
+		  ESC_Set(4, 1200);
+		  ESC_Set(2, 1200);
+	  }*/
+	  if(yaw > 6.0f){
+		  LED_Blink(1000);
 		  LED_Update();
-
-		  if(ESC_IsArmed()){
-			  ESC_Set(1, 1200);
-			  ESC_Set(3, 1200);
-			  ESC_Set(4, 1200);
-			  ESC_Set(2, 1200);
-		  }*/
-		  if(yaw > 6.0f){
-			  LED_Blink(1000);
-			  LED_Update();
-		  }
-		  else{
-			  LED_Off();
-		  }
-
 	  }
-	  /* USER CODE END 3 */
+	  else{
+		  LED_Off();
+	  }
+
+  }
   /* USER CODE END 3 */
 }
 
