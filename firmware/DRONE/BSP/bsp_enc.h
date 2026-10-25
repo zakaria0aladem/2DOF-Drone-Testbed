@@ -12,7 +12,7 @@
 #define ENC_PITCH 2
 
 void ENC_Init(void);
-uint32_t ENC_GetCounter(uint8_t axis);
+int32_t ENC_GetCount(uint8_t axis);
 float ENC_GetDeg(uint8_t axis);
 void ENC_Zero(uint8_t axis);
 

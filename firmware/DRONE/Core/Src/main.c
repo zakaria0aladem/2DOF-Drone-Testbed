@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include "bsp_led.h"
 #include "bsp_esc.h"
+#include "bsp_enc.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -51,7 +52,7 @@ TIM_HandleTypeDef htim5;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
-
+volatile float yaw =0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -110,6 +111,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   LED_Init();
   ESC_Init();
+  ENC_Init();
   /*0.5s on and 0.5s off*/
   LED_Blink(1000);
   /* USER CODE END 2 */
@@ -121,15 +123,21 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  LED_Update();
-	  ESC_Update();
+	  yaw = ENC_GetDeg(ENC_YAW);
+	  //LED_Update();
+	 /* ESC_Update();
 	  if(ESC_IsArmed()){
 		  ESC_Set(1, 1200);
 		  ESC_Set(3, 1200);
 		  ESC_Set(4, 1200);
 		  ESC_Set(2, 1200);
-
-
+	  }*/
+	  if(yaw > 6.0f){
+		  LED_Blink(1000);
+		  LED_Update();
+	  }
+	  else{
+		  LED_Off();
 	  }
 
   }
