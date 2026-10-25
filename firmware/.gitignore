@@ -12,3 +12,5 @@ Release/
 # Personal IDE settings
 .settings/
 *.launch
+
+*mx.scratch
