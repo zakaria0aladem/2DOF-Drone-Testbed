@@ -73,6 +73,8 @@ void Error_Handler(void);
 #define BUZZER_GPIO_Port GPIOA
 #define PITCH_A_Pin GPIO_PIN_15
 #define PITCH_A_GPIO_Port GPIOA
+#define ARM_SW_Pin GPIO_PIN_3
+#define ARM_SW_GPIO_Port GPIOD
 #define PITCH_B_Pin GPIO_PIN_3
 #define PITCH_B_GPIO_Port GPIOB
 #define ESC3_Pin GPIO_PIN_4

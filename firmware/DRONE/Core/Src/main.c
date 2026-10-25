@@ -25,6 +25,7 @@
 #include "bsp_esc.h"
 #include "bsp_enc.h"
 #include "bsp_imu.h"      // IMU
+#include "bsp_pid.h"      // PID
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -49,6 +50,7 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim5;
+TIM_HandleTypeDef htim6;
 
 UART_HandleTypeDef huart3;
 
@@ -65,6 +67,7 @@ static void MX_TIM3_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM5_Init(void);
+static void MX_TIM6_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -109,12 +112,15 @@ int main(void)
   MX_TIM4_Init();
   MX_TIM2_Init();
   MX_TIM5_Init();
+  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
   LED_Init();
   ESC_Init();
 
   ENC_Init();
   IMU_Init();             // IMU
+  PID_Init();             // PID
+  HAL_TIM_Base_Start_IT(&htim6);   // PID: start the 500 Hz control loop
   /*0.5s on and 0.5s off*/
   LED_Blink(1000);
   /* USER CODE END 2 */
@@ -127,11 +133,10 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 	  yaw = ENC_GetDeg(ENC_YAW);
-	  IMU_Update();       // IMU
-	  IMU_Print();        // IMU
+	  ESC_Update();       // PID: finishes the ESC arming sequence
+	  PID_Print();        // PID
 	  //LED_Update();
-	 /* ESC_Update();
-	  LED_Update();
+	 /* LED_Update();
 
 	  if(ESC_IsArmed()){
 		  ESC_Set(1, 1200);
@@ -455,6 +460,44 @@ static void MX_TIM5_Init(void)
 }
 
 /**
+  * @brief TIM6 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM6_Init(void)
+{
+
+  /* USER CODE BEGIN TIM6_Init 0 */
+
+  /* USER CODE END TIM6_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM6_Init 1 */
+
+  /* USER CODE END TIM6_Init 1 */
+  htim6.Instance = TIM6;
+  htim6.Init.Prescaler = 83;
+  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim6.Init.Period = 1999;
+  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM6_Init 2 */
+
+  /* USER CODE END TIM6_Init 2 */
+
+}
+
+/**
   * @brief USART3 Initialization Function
   * @param None
   * @retval None
@@ -526,12 +569,26 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(BUZZER_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : ARM_SW_Pin */
+  GPIO_InitStruct.Pin = ARM_SW_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(ARM_SW_GPIO_Port, &GPIO_InitStruct);
+
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
   /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
+/* PID: TIM6 fires every 2 ms, read the IMU and run one control step */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
+	if(htim->Instance == TIM6){
+		IMU_Update();
+		PID_Update();
+	}
+}
+
 extern UART_HandleTypeDef huart3;
 int __io_putchar(int ch){
 	HAL_UART_Transmit(&huart3, (uint8_t*)&ch, 1, HAL_MAX_DELAY);
