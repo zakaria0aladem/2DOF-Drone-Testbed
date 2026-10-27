@@ -1,0 +1,956 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>html,body{margin:0}body{font:14px system-ui,sans-serif}[hidden]{display:none!important}</style>
+<title>Testbed Wiring 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: full-height 3D workbench on the left, wiring index + detail card on the right (stacks under the scene on phones) */
+:root {
+  --bg: #eef1f1;
+  --panel: #fbfcfc;
+  --ink: #16201c;
+  --muted: #5a6762;
+  --line: #d9e0dd;
+  --chip: #edf1ef;
+  --accent: #2e8b57;
+  --scene-hi: #f4f6f5;
+  --scene-lo: #c9d1ce;
+  --desk: #d6dcd9;
+  --grid: #8d9a95;
+  --ok: #2e8b57;
+  --plan: #2d6fb3;
+  --inf: #b07419;
+  --glass: rgba(251, 252, 252, .82);
+  --shadow: 0 10px 30px rgba(22, 32, 28, .12);
+  --font-ui: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --font-pin: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101413; --panel: #151a18; --ink: #e4ebe7; --muted: #93a19b; --line: #28302d; --chip: #1d2421;
+    --accent: #5cc48a; --scene-hi: #222a27; --scene-lo: #0c0f0e; --desk: #2a312e; --grid: #6f7d77;
+    --ok: #5cc48a; --plan: #6ea6e8; --inf: #e1a84d; --glass: rgba(21, 26, 24, .8); --shadow: 0 10px 30px rgba(0, 0, 0, .4);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101413; --panel: #151a18; --ink: #e4ebe7; --muted: #93a19b; --line: #28302d; --chip: #1d2421;
+  --accent: #5cc48a; --scene-hi: #222a27; --scene-lo: #0c0f0e; --desk: #2a312e; --grid: #6f7d77;
+  --ok: #5cc48a; --plan: #6ea6e8; --inf: #e1a84d; --glass: rgba(21, 26, 24, .8); --shadow: 0 10px 30px rgba(0, 0, 0, .4);
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 14px; }
+.app { display: grid; grid-template-columns: minmax(0, 1fr) 380px; height: 100%; }
+#stage { position: relative; min-width: 0; overflow: hidden; background: radial-gradient(120% 90% at 40% 30%, var(--scene-hi), var(--scene-lo)); }
+#stage canvas { display: block; touch-action: none; }
+#labels { position: absolute; inset: 0; pointer-events: none; }
+
+.overlay { position: absolute; z-index: 2; }
+.glass { background: var(--glass); border: 1px solid var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: var(--shadow); }
+.title { top: 16px; left: 16px; max-width: min(400px, calc(100% - 32px)); pointer-events: none; border-radius: 14px; padding: 12px 16px 13px; }
+.title .eyebrow { font: 600 10.5px var(--font-pin); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+.title h1 { margin: 4px 0 0; font-size: 21px; font-weight: 700; letter-spacing: -.015em; text-wrap: balance; }
+.title p { margin: 5px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+.views { top: 16px; right: 16px; display: flex; gap: 2px; flex-wrap: wrap; justify-content: flex-end; max-width: 64%; border-radius: 999px; padding: 4px; }
+.views button, .chips button {
+  font: 500 12.5px var(--font-ui); color: var(--ink); background: transparent; border: 1px solid transparent;
+  border-radius: 999px; padding: 6px 12px; cursor: pointer; transition: background .15s, color .15s;
+}
+.views button:hover { background: var(--chip); }
+.views .sep { width: 1px; background: var(--line); margin: 4px 4px; }
+.views button[aria-pressed="true"], .chips button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+.views button:focus-visible, .chips button:focus-visible, .item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.legend { left: 16px; bottom: 16px; display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); border-radius: 12px; padding: 9px 13px; pointer-events: none; }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.sw-solid { width: 22px; height: 5px; border-radius: 3px; background: var(--muted); }
+.sw-stripe { width: 22px; height: 5px; border-radius: 3px; background: repeating-linear-gradient(90deg, var(--muted) 0 4px, transparent 4px 7px); }
+.sw-dash { width: 22px; height: 0; border-top: 2px dashed var(--muted); }
+.sw-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+.hint { right: 16px; bottom: 16px; font-size: 12px; color: var(--muted); pointer-events: none; }
+.hint kbd { font: 500 11px var(--font-pin); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; background: var(--glass); }
+
+#tip { position: absolute; z-index: 3; pointer-events: none; background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 9px; padding: 8px 11px; font-size: 12.5px; box-shadow: var(--shadow); max-width: 260px; }
+#tip b { display: block; font-weight: 600; margin-bottom: 2px; }
+#tip code { font-family: var(--font-pin); font-size: 11.5px; color: var(--muted); }
+
+.tag { display: flex; align-items: center; gap: 6px; font: 500 11.5px var(--font-ui); color: var(--ink); background: var(--glass); border: 1px solid var(--line);
+  padding: 3px 9px 3px 7px; border-radius: 999px; white-space: nowrap; transform: translateY(-14px); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.tag::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--dot, var(--muted)); }
+.tag.minor { font: 500 10.5px var(--font-pin); padding: 2px 7px; }
+.tag.minor::before { display: none; }
+.pin { font: 600 11px var(--font-pin); color: var(--panel); background: var(--ink); padding: 4px 8px; border-radius: 6px;
+  white-space: nowrap; transform: translateY(-18px); box-shadow: 0 4px 12px rgba(0,0,0,.25); }
+body.no-tags .tag, body.far .tag.minor { display: none; }
+
+.panel { border-left: 1px solid var(--line); background: var(--panel); overflow-y: auto; padding-block: 20px 28px; padding-inline: 20px; min-width: 0; }
+.specs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-bottom: 16px; }
+.specs div { background: var(--panel); padding: 10px 12px; }
+.specs b { display: block; font: 600 16px var(--font-pin); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.specs span { font-size: 11.5px; color: var(--muted); }
+.panel h2 { display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 22px 0 6px; }
+.panel h2 i { font: 500 11px var(--font-pin); font-style: normal; letter-spacing: 0; }
+#detail { border: 1px solid var(--line); border-radius: 14px; padding: 15px 16px 16px; background: var(--bg); }
+#detail h3 { margin: 0; font-size: 16.5px; font-weight: 600; letter-spacing: -.01em; text-wrap: balance; }
+#detail .meta { display: flex; gap: 8px; align-items: center; margin-top: 7px; flex-wrap: wrap; }
+#detail .grp { font-size: 11.5px; color: var(--muted); }
+#detail .empty { color: var(--muted); line-height: 1.55; margin: 0; }
+#detail .empty b { color: var(--ink); font-weight: 600; }
+.route { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 10px; position: relative; }
+.route::before { content: ""; position: absolute; left: 4px; top: 10px; bottom: 10px; width: 2px; background: var(--wire, var(--line)); border-radius: 2px; opacity: .7; }
+.route li { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 12px; font-size: 13px; line-height: 1.45; }
+.route li::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--panel); border: 2px solid var(--wire, var(--muted)); box-sizing: border-box; margin-top: 4px; position: relative; }
+.route .k, .sig .k { display: block; font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.sig { margin: 14px 0 0; font-size: 13px; line-height: 1.5; padding-top: 12px; border-top: 1px solid var(--line); }
+#detail code { font-family: var(--font-pin); font-size: 11.5px; background: var(--chip); padding: 1px 5px; border-radius: 4px; }
+#detail .note { margin: 12px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+.pill { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .03em; padding: 2px 9px; border-radius: 999px; border: 1px solid currentColor; }
+.pill.confirmed { color: var(--ok); } .pill.planned { color: var(--plan); } .pill.inferred { color: var(--inf); }
+.chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 18px; }
+.chips button { background: var(--chip); }
+.item { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 11px; align-items: center; width: calc(100% + 16px); text-align: left;
+  background: none; border: 0; border-radius: 9px; padding: 7px 8px; margin-left: -8px; cursor: pointer; color: var(--ink); font: inherit; transition: background .12s; }
+.item:hover { background: var(--chip); }
+.item[aria-current="true"] { background: var(--chip); box-shadow: inset 0 0 0 1px var(--line); }
+.item .sw { width: 12px; height: 12px; border-radius: 4px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
+.item .nm { font-size: 13.5px; line-height: 1.3; min-width: 0; }
+.item .sub { display: block; font-family: var(--font-pin); font-size: 11px; color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
+.item .st { width: 8px; height: 8px; border-radius: 50%; }
+.st.confirmed { background: var(--ok); } .st.planned { background: var(--plan); } .st.inferred { background: var(--inf); }
+.foot { margin-top: 22px; font-size: 12px; color: var(--muted); line-height: 1.55; display: grid; gap: 6px; }
+.foot p { margin: 0; }
+#loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 13px; z-index: 1; pointer-events: none; }
+
+@media (max-width: 860px) {
+  html, body { height: auto; }
+  .app { grid-template-columns: 1fr; grid-template-rows: 66vh auto; height: auto; }
+  .panel { border-left: 0; border-top: 1px solid var(--line); }
+  .title p, .hint { display: none; }
+  .views { top: auto; bottom: 12px; right: 12px; left: 12px; max-width: none; justify-content: center; }
+  .legend { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head><body>
+
+<div class="app">
+  <div id="stage">
+    <div id="loading">Building the bench…</div>
+    <div id="labels"></div>
+    <div class="overlay title glass">
+      <div class="eyebrow">Hiwonder RRC v1.2 · STM32F407</div>
+      <h1>2-DOF testbed wiring</h1>
+      <p>Bench supply, controller, ESC, joint encoders, ST-LINK and the Pi, with the camera on the drone. Drag to orbit, scroll to zoom, click any wire for its pins.</p>
+    </div>
+    <div class="overlay views glass" role="group" aria-label="Camera views">
+      <button id="v-all" aria-pressed="true">Overview</button>
+      <button id="v-board" aria-pressed="false">Controller</button>
+      <button id="v-power" aria-pressed="false">Power</button>
+      <button id="v-rig" aria-pressed="false">Testbed</button>
+      <button id="v-drone" aria-pressed="false">Drone</button>
+      <i class="sep" aria-hidden="true"></i>
+      <button id="v-spin" aria-pressed="false" title="Spin the propellers in their planned directions">Spin</button>
+      <button id="v-tags" aria-pressed="true" title="Show or hide part names">Names</button>
+    </div>
+    <div class="overlay legend glass">
+      <span><i class="sw-solid"></i>Wired or planned</span>
+      <span><i class="sw-stripe"></i>Inferred, check it</span>
+      <span><i class="sw-dash"></i>Wireless</span>
+      <span><i class="sw-pulse"></i>Signal direction</span>
+    </div>
+    <div class="overlay hint"><kbd>Esc</kbd> clears the selection</div>
+    <div id="tip" hidden></div>
+  </div>
+
+  <aside class="panel">
+    <div class="specs">
+      <div><b>12.0 V</b><span>bench supply, one Y-cable</span></div>
+      <div><b>400 Hz</b><span>ESC PWM, 1000–2000 µs</span></div>
+      <div><b>168 MHz</b><span>core, 16 MHz crystal</span></div>
+      <div><b>2880</b><span>counts per joint turn</span></div>
+    </div>
+    <div id="detail"><p class="empty">Pick a wire in the scene or in the list below. You get <b>both ends</b>, the <b>pin and timer</b> behind it, and how sure we are about it. The selected wire shows pulses running in the signal direction.</p></div>
+    <div class="chips" role="group" aria-label="Filter connections">
+      <button data-f="all" aria-pressed="true">All</button>
+      <button data-f="power" aria-pressed="false">Power</button>
+      <button data-f="esc" aria-pressed="false">ESC</button>
+      <button data-f="enc" aria-pressed="false">Encoders</button>
+      <button data-f="data" aria-pressed="false">Data</button>
+      <button data-f="board" aria-pressed="false">On board</button>
+    </div>
+    <div id="list"></div>
+    <div class="foot">
+      <p><span class="pill confirmed">Confirmed</span> wired and working, or checked on the schematic.</p>
+      <p><span class="pill planned">Planned</span> pin chosen and configured, not yet proven on the rig.</p>
+      <p><span class="pill inferred">Inferred</span> a guess to check.</p>
+      <p>Connector positions on the controller are arranged for readability; the pin numbers are the real ones. M port pinout: 1 motor out, 2 GND, 3 A, 4 B, 5 +5 V, 6 motor out. Pins 1 and 6 stay empty.</p>
+    </div>
+  </aside>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/renderers/CSS2DRenderer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/environments/RoomEnvironment.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/geometries/RoundedBoxGeometry.js"></script>
+<script>
+(() => {
+const start = () => {
+document.getElementById('loading').remove();
+if (THREE.ColorManagement) THREE.ColorManagement.legacyMode = false;
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
+const tok = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- renderer, camera, lights ---------- */
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x000000, 0);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+stage.prepend(renderer.domElement);
+
+const labelRenderer = new THREE.CSS2DRenderer({ element: document.getElementById('labels') });
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
+
+const camera = new THREE.PerspectiveCamera(34, 1, 0.5, 1200);
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.maxPolarAngle = 1.45;
+controls.minDistance = 10;
+controls.maxDistance = 360;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x7d8783, 0.32));
+const sun = new THREE.DirectionalLight(0xfff6ea, 1.25);
+sun.position.set(40, 120, 70);
+sun.castShadow = true;
+sun.shadow.mapSize.set(4096, 4096);
+Object.assign(sun.shadow.camera, { left: -110, right: 110, top: 90, bottom: -90, near: 10, far: 320 });
+sun.shadow.bias = -0.0005;
+sun.shadow.normalBias = 0.02;
+sun.shadow.radius = 5;
+scene.add(sun);
+const rim = new THREE.DirectionalLight(0xdfe9ff, 0.35);
+rim.position.set(-90, 60, -80);
+scene.add(rim);
+
+/* ---------- small builders ---------- */
+const mat = (c, r = 0.6, m = 0.05, extra = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: r, metalness: m }, extra));
+function add(mesh, parent, x = 0, y = 0, z = 0) {
+  mesh.position.set(x, y, z);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  parent.add(mesh);
+  return mesh;
+}
+const box = (w, h, d, m, p, x, y, z) => add(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m), p, x, y, z);
+const rbox = (w, h, d, r, m, p, x, y, z, seg = 3) => add(new THREE.Mesh(new THREE.RoundedBoxGeometry(w, h, d, seg, r), m), p, x, y, z);
+const cyl = (rt, rb, h, m, p, x, y, z, seg = 32) => add(new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), m), p, x, y, z);
+function group(parent, x, y, z, ry = 0) { const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ry; parent.add(g); return g; }
+
+const anchors = {};
+function anchor(name, parent, x, y, z) { const o = new THREE.Object3D(); o.position.set(x, y, z); parent.add(o); anchors[name] = o; return o; }
+const W = name => { const v = V(0, 0, 0); anchors[name].getWorldPosition(v); return v; };
+
+const DOT = { power: '#d23c34', esc: '#f0b429', enc: '#18a08a', data: '#6ea6e8' };
+function tag(text, parent, x, y, z, o = {}) {
+  const el = document.createElement('div');
+  el.className = 'tag' + (o.minor ? ' minor' : '');
+  if (o.dot) el.style.setProperty('--dot', o.dot);
+  el.textContent = text;
+  const obj = new THREE.CSS2DObject(el);
+  obj.position.set(x, y, z);
+  parent.add(obj);
+  return obj;
+}
+function canvasTex(w, h, draw) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return t;
+}
+const topFace = (side, map, r = 0.6) => [side, side, new THREE.MeshStandardMaterial({ map, roughness: r }), side, side, side];
+
+const M = {
+  pcbBlue: mat(0x1d3f8f, 0.55), pcbPi: mat(0x1f6a37, 0.6), pcbEsc: mat(0x1a2a26, 0.6), pcbCam: mat(0x1f6a37, 0.6),
+  chip: mat(0x15171a, 0.45), metal: mat(0xc3c9ce, 0.28, 0.9), steel: mat(0xb0b7bd, 0.22, 0.95), alu: mat(0xcfd4d8, 0.32, 0.8),
+  header: mat(0x1b1c1f, 0.6), gold: mat(0xd8ad4c, 0.28, 0.95), jst: mat(0xf1ece0, 0.5), term: mat(0x2f9a5c, 0.5),
+  xt60: mat(0xf0c13c, 0.45), carbon: mat(0x1a1c1f, 0.35, 0.3, { envMapIntensity: 1.3 }), plate: mat(0x202326, 0.55), red: mat(0xc6332e, 0.4, 0.2),
+  motor: mat(0x26282c, 0.35, 0.6), bell: mat(0x3a3e45, 0.28, 0.75), bellRed: mat(0xb8322d, 0.3, 0.6), psu: mat(0xe9e7e2, 0.5), psuFace: mat(0x2a2d31, 0.5),
+  rubber: mat(0x2a2d30, 0.9), black: mat(0x101214, 0.45), white: mat(0xf0f0ec, 0.5), cap: mat(0x232a33, 0.35, 0.4),
+  laptop: mat(0x9aa2a9, 0.3, 0.75), keys: mat(0x22262a, 0.65), stlink: mat(0x2b5fb8, 0.35, 0.55), shrink: mat(0x16181b, 0.7),
+  prop: mat(0x111316, 0.4, 0.05, { transparent: true, opacity: 0.92 }), lens: mat(0x0a0c10, 0.08, 0.6),
+  led: mat(0x39e07a, 0.3, 0, { emissive: 0x1fbf5a, emissiveIntensity: 1.2 }), ledRed: mat(0xff5a4a, 0.3, 0, { emissive: 0xff2a1a, emissiveIntensity: 1.1 })
+};
+
+/* ---------- desk ---------- */
+const deskMat = mat(0xdfe4e2, 0.92, 0);
+rbox(156, 3, 104, 1.4, deskMat, scene, -4, -1.5, -13, 4).castShadow = false;
+const gridTex = canvasTex(1560, 1040, (g, w, h) => {
+  g.clearRect(0, 0, w, h);
+  for (let x = 0; x <= w; x += 20) { g.fillStyle = x % 200 === 0 ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.2)'; g.fillRect(x, 0, x % 200 === 0 ? 2 : 1, h); }
+  for (let y = 0; y <= h; y += 20) { g.fillStyle = y % 200 === 0 ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.2)'; g.fillRect(0, y, w, y % 200 === 0 ? 2 : 1); }
+});
+const gridMat = new THREE.MeshBasicMaterial({ map: gridTex, transparent: true, opacity: 0.35, depthWrite: false });
+const grid = new THREE.Mesh(new THREE.PlaneGeometry(154, 102), gridMat);
+grid.rotation.x = -Math.PI / 2; grid.position.set(-4, 0.02, -13); scene.add(grid);
+
+function applyTheme() {
+  deskMat.color.set(tok('--desk'));
+  gridMat.color.set(tok('--grid'));
+}
+applyTheme();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+/* ---------- bench power supply (UNI-T UTP3315TFL-II) ---------- */
+const psu = group(scene, -56, 0, -2, 0.12);
+rbox(20, 17, 28, 0.9, M.psu, psu, 0, 8.5, 0);
+rbox(19, 16, 0.6, 0.4, M.psuFace, psu, 0, 8.5, 14);
+const dispTex = canvasTex(512, 256, (g, w, h) => {
+  g.fillStyle = '#0e1012'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#ff4a3a'; g.font = '600 92px "JetBrains Mono", monospace'; g.fillText('12.00', 28, 112);
+  g.font = '500 40px "JetBrains Mono", monospace'; g.fillText('V', 330, 112);
+  g.fillStyle = '#3ad16a'; g.font = '600 92px "JetBrains Mono", monospace'; g.fillText('0.42', 28, 222);
+  g.font = '500 40px "JetBrains Mono", monospace'; g.fillText('A', 290, 222);
+  g.fillStyle = '#8b949b'; g.font = '500 26px "JetBrains Mono", monospace'; g.fillText('C.V', 410, 112); g.fillText('OUT', 404, 222);
+});
+box(11, 6.5, 0.2, new THREE.MeshBasicMaterial({ map: dispTex, toneMapped: false }), psu, -3.4, 10.8, 14.35);
+for (let i = 0; i < 4; i++) { const k = cyl(0.95, 0.95, 1.3, M.white, psu, 6.4, 14.2 - i * 2.9, 14.8); k.rotation.x = Math.PI / 2; }
+[[2.2, M.white], [5.2, M.black], [8.2, M.red]].forEach(([x, m]) => { const p = cyl(0.8, 0.8, 1.6, m, psu, x - 2.4, 2.8, 14.9); p.rotation.x = Math.PI / 2; });
+box(1.4, 0.8, 0.3, M.ledRed, psu, -7.5, 3.0, 14.4);
+anchor('psu.neg', psu, 2.8, 2.8, 15.7);
+anchor('psu.pos', psu, 5.8, 2.8, 15.7);
+tag('Bench PSU · UNI-T UTP3315TFL-II', psu, 0, 19, 0, { dot: DOT.power });
+
+/* ---------- Y-cable splice + XT60 ---------- */
+const ysp = group(scene, -36, 0, 16, -0.35);
+rbox(4.2, 0.9, 1.6, 0.35, M.shrink, ysp, 0, 0.45, 0);
+anchor('y.in+', ysp, -2.1, 0.5, -0.35); anchor('y.in-', ysp, -2.1, 0.5, 0.35);
+anchor('y.a+', ysp, 2.1, 0.5, -0.55); anchor('y.a-', ysp, 2.1, 0.5, -0.15);
+anchor('y.b+', ysp, 2.1, 0.5, 0.25); anchor('y.b-', ysp, 2.1, 0.5, 0.65);
+tag('Y-cable splice', ysp, 0, 2.4, 0, { dot: DOT.power });
+const xt = group(scene, -14, 0, -9, 0.08);
+rbox(2.2, 1.2, 1.6, 0.2, M.xt60, xt, -1.15, 0.6, 0);
+rbox(2.2, 1.2, 1.6, 0.2, M.xt60, xt, 1.15, 0.6, 0);
+anchor('xt.in+', xt, -2.3, 0.6, -0.35); anchor('xt.in-', xt, -2.3, 0.6, 0.35);
+anchor('xt.out+', xt, 2.3, 0.6, -0.35); anchor('xt.out-', xt, 2.3, 0.6, 0.35);
+tag('XT60', xt, 0, 2.6, 0, { minor: true });
+
+/* ---------- Hiwonder ROS Robot Controller v1.2 ---------- */
+const hw = group(scene, -5, 0, 10);
+[[-6.4, -4.4], [6.4, -4.4], [-6.4, 4.4], [6.4, 4.4]].forEach(([x, z]) => cyl(0.3, 0.3, 1.2, M.metal, hw, x, 0.6, z, 12));
+const T = 1.36;
+const ports = [['M1', -0.8], ['M2', 1.5], ['M3', 3.8], ['M4', 6.0]];
+// silkscreen: canvas x = (board x + 7) * 100, canvas y = (board z + 5) * 100
+const silk = canvasTex(1400, 1000, (g, w, h) => {
+  const px = x => (x + 7) * 100, pz = z => (z + 5) * 100;
+  g.fillStyle = '#1d3f8f'; g.fillRect(0, 0, w, h);
+  g.strokeStyle = 'rgba(120,160,255,.18)'; g.lineWidth = 5;
+  for (let i = 0; i < 22; i++) { g.beginPath(); const y = 260 + i * 26; g.moveTo(px(-5.2), y); g.lineTo(px(-3.4), y); g.lineTo(px(-2.2), y - 120 + i * 4); g.lineTo(px(-1.2), y - 120 + i * 4); g.stroke(); }
+  for (let i = 0; i < 16; i++) { g.beginPath(); const x = px(1.9) + i * 22; g.moveTo(x, pz(-1.2)); g.lineTo(x, pz(-3.1)); g.lineTo(x + (i % 4) * 30, pz(-3.5)); g.stroke(); }
+  g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = 4; g.strokeRect(16, 16, w - 32, h - 32);
+  g.fillStyle = '#f2f4f8';
+  g.font = '600 34px "JetBrains Mono", monospace'; g.textAlign = 'center';
+  ports.forEach(([n, cx]) => g.fillText(n, px(cx), pz(-3.25)));
+  g.font = '600 28px "JetBrains Mono", monospace';
+  g.fillText('USB1', px(-5.6), pz(-3.7)); g.fillText('USB2', px(-3.4), pz(-3.7));
+  g.fillText('H1 SWD', px(1.2), pz(3.35));
+  g.fillText('QMI8658', px(-2.6), pz(3.25));
+  g.textAlign = 'left'; g.fillText('VIN', px(-5.55), pz(-0.9));
+  g.fillText('PI 5V', px(-5.55), pz(2.55));
+  g.font = '700 40px "Instrument Sans", sans-serif'; g.fillText('ROS Robot Controller', px(-1.6), pz(1.75));
+  g.font = '500 28px "JetBrains Mono", monospace'; g.fillText('V1.2', px(-1.6), pz(2.25));
+});
+rbox(14, 0.16, 10, 0.05, M.pcbBlue, hw, 0, 1.28, 0, 1);
+box(13.9, 0.01, 9.9, new THREE.MeshStandardMaterial({ map: silk, roughness: 0.5, metalness: 0.05 }), hw, 0, 1.365, 0).castShadow = false;
+const mcuTex = canvasTex(256, 256, (g, w, h) => {
+  g.fillStyle = '#16181b'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#a3a9af'; g.font = '600 30px "JetBrains Mono", monospace';
+  g.fillText('STM32', 40, 110); g.fillText('F407VET6', 40, 150);
+  g.font = '500 20px "JetBrains Mono", monospace'; g.fillStyle = '#6b7177'; g.fillText('ARM Cortex-M4', 40, 185);
+  g.beginPath(); g.arc(40, 220, 10, 0, 7); g.fill();
+});
+box(2.8, 0.25, 2.8, topFace(M.chip, mcuTex, 0.45), hw, 0.4, T + 0.12, -0.4);
+for (let i = 0; i < 4; i++) { const r = box(3.2, 0.04, 0.08, M.metal, hw, 0.4, T + 0.02, -0.4); r.rotation.y = i * Math.PI / 2; r.position.x += [0, 1.55, 0, -1.55][i]; r.position.z += [1.55, 0, -1.55, 0][i]; }
+// VIN screw terminal and Pi 5 V USB-C output, left edge
+box(1.2, 1.0, 1.8, M.term, hw, -6.3, T + 0.5, -1);
+[-1.4, -0.6].forEach(z => cyl(0.26, 0.26, 0.12, M.metal, hw, -6.3, T + 1.04, z, 16));
+anchor('hw.vin+', hw, -6.95, T + 0.55, -1.4); anchor('hw.vin-', hw, -6.95, T + 0.55, -0.6);
+rbox(0.8, 0.4, 1.0, 0.15, M.metal, hw, -6.6, T + 0.2, 2.4);
+anchor('hw.pi5v', hw, -7.05, T + 0.2, 2.4);
+// USB-C ports, back edge
+rbox(1.0, 0.4, 0.8, 0.15, M.metal, hw, -5.6, T + 0.2, -4.65);
+rbox(1.0, 0.4, 0.8, 0.15, M.metal, hw, -3.4, T + 0.2, -4.65);
+anchor('hw.usb1', hw, -5.6, T + 0.2, -5.1); anchor('hw.usb2', hw, -3.4, T + 0.2, -5.1);
+// PWM servo headers J1 J2 J4 J5, right edge (unused now)
+[-2.4, -0.8, 0.8, 2.4].forEach(z => {
+  box(1.9, 0.5, 0.65, M.header, hw, 5.6, T + 0.25, z);
+  [6.2, 5.6, 5.0].forEach(x => box(0.14, 0.95, 0.14, M.gold, hw, x, T + 0.75, z));
+});
+// M ports, back edge, 6-pin: 1 motor out, 2 GND, 3 A, 4 B, 5 +5 V, 6 motor out
+ports.forEach(([n, cx]) => {
+  rbox(2.05, 0.9, 1.0, 0.08, M.jst, hw, cx, T + 0.45, -4.35, 2);
+  for (let i = 0; i < 6; i++) { const x = cx - 0.75 + i * 0.3; box(0.12, 0.05, 0.3, M.gold, hw, x, T + 0.92, -4.7); anchor(`hw.${n}.${i + 1}`, hw, x, T + 0.95, -4.85); }
+  anchor(`hw.${n}`, hw, cx, T + 0.95, -4.85);
+});
+// H1 SWD header, front edge, 2 x 4: odd pins on the inner row (1 3V3, 3 SWCLK, 5 GND, 7 SWDIO)
+box(1.75, 0.5, 0.85, M.header, hw, 1.2, T + 0.25, 4.0);
+for (let i = 0; i < 4; i++) [3.8, 4.2].forEach((z, r) => {
+  const x = 0.6 + i * 0.4;
+  box(0.12, 0.95, 0.12, M.gold, hw, x, T + 0.75, z);
+  if (r === 0) anchor(`hw.H1.${i * 2 + 1}`, hw, x, T + 1.22, z);
+});
+// on-board parts
+box(0.7, 0.15, 0.7, M.chip, hw, -2.6, T + 0.08, 2.4);            // QMI8658
+box(0.32, 0.14, 0.22, M.led, hw, -5.8, T + 0.07, 4.0);            // LED PE10
+[-4.6, -3.4].forEach(x => { box(0.75, 0.3, 0.75, M.metal, hw, x, T + 0.15, 4.0); cyl(0.22, 0.22, 0.25, M.black, hw, x, T + 0.42, 4.0, 16); });
+cyl(0.62, 0.62, 0.6, M.black, hw, 3.4, T + 0.3, 3.0, 28);         // buzzer
+[0, 1].forEach(i => box(0.32, 0.12, 0.16, M.chip, hw, -5.3 + i * 0.5, T + 0.06, 0.4)); // VIN divider
+[[-1.6, -2.2], [2.5, 0.8], [-3.8, 0.2]].forEach(([x, z]) => cyl(0.35, 0.35, 0.7, M.cap, hw, x, T + 0.35, z, 20));
+tag('Hiwonder RRC v1.2 · STM32F407VET6', hw, 0, 1.6, 6.2, { dot: '#6ea6e8' });
+
+/* ---------- ST-LINK on the H1 header ---------- */
+const stl = group(scene, -24, 0, 26, 0.05);
+const stlTex = canvasTex(512, 160, (g, w, h) => {
+  g.fillStyle = '#2b5fb8'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#eef3ff'; g.font = '700 54px "JetBrains Mono", monospace'; g.fillText('ST-LINK', 40, 98);
+  g.font = '500 28px "JetBrains Mono", monospace'; g.fillStyle = 'rgba(238,243,255,.7)'; g.fillText('SWD', 330, 98);
+});
+rbox(7, 1.1, 2.2, 0.35, M.stlink, stl, 0, 0.55, 0);
+box(5, 0.01, 1.6, new THREE.MeshStandardMaterial({ map: stlTex, roughness: 0.4, metalness: 0.4 }), stl, 0, 1.106, 0).castShadow = false;
+box(1.8, 0.5, 1.3, M.metal, stl, -4.3, 0.55, 0);
+box(0.6, 0.8, 1.9, M.header, stl, 3.7, 0.55, 0);
+[-0.6, 0, 0.6].forEach((z, i) => anchor(['stl.clk', 'stl.gnd', 'stl.dio'][i], stl, 4.1, 0.65, z));
+anchor('stl.usb', stl, -5.2, 0.55, 0);
+tag('ST-LINK', stl, 0, 2.4, 0, { dot: DOT.data });
+
+/* ---------- Raspberry Pi ---------- */
+const pi = group(scene, -6, 0, -25);
+[[-3.8, -2.4], [2.0, -2.4], [-3.8, 2.4], [2.0, 2.4]].forEach(([x, z]) => cyl(0.22, 0.22, 0.9, M.metal, pi, x, 0.45, z, 12));
+rbox(8.5, 0.14, 5.6, 0.25, M.pcbPi, pi, 0, 0.97, 0, 2);
+const PIT = 1.04;
+box(1.5, 0.25, 1.5, M.metal, pi, -1.2, PIT + 0.12, -0.2);
+box(5.0, 0.8, 0.5, M.header, pi, -1.0, PIT + 0.4, -2.45);
+for (let i = 0; i < 20; i++) [-2.3, -2.6].forEach(z => box(0.08, 0.5, 0.08, M.gold, pi, -3.35 + i * 0.25, PIT + 1.0, z));
+box(1.7, 1.5, 1.3, M.metal, pi, 3.5, PIT + 0.75, -1.6);
+box(1.7, 1.5, 1.3, M.metal, pi, 3.5, PIT + 0.75, 0.2);
+box(1.7, 1.3, 1.5, M.metal, pi, 3.5, PIT + 0.65, 1.9);
+rbox(0.9, 0.35, 0.7, 0.12, M.metal, pi, -3.2, PIT + 0.18, 2.5);
+box(0.3, 0.5, 2.0, M.white, pi, 0.6, PIT + 0.25, 1.4);
+box(0.8, 0.12, 0.8, M.chip, pi, 1.4, PIT + 0.06, -0.6);
+anchor('pi.usb', pi, 4.4, PIT + 1.0, 0.2);
+anchor('pi.pwr', pi, -3.2, PIT + 0.18, 2.9);
+anchor('pi.csi', pi, 0.6, PIT + 0.5, 1.4);
+anchor('pi.air', pi, 0, PIT + 3, 0);
+tag('Raspberry Pi', pi, 0, 4, 0, { dot: '#5cc48a' });
+
+/* ---------- laptop with dashboard ---------- */
+const lap = group(scene, -42, 0, -40, 0.28);
+rbox(28, 1.2, 19, 0.6, M.laptop, lap, 0, 0.6, 0);
+box(24, 0.1, 9, M.keys, lap, 0, 1.22, -1.5);
+rbox(9, 0.06, 5, 0.3, mat(0x8d959c, 0.25, 0.7), lap, 0, 1.21, 5.6);
+const screenTex = canvasTex(1024, 640, (g, w, h) => {
+  g.fillStyle = '#0f1513'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#e5ebe8'; g.font = '600 34px "Instrument Sans", sans-serif'; g.fillText('Testbed dashboard', 40, 62);
+  g.fillStyle = '#5cc48a'; g.font = '500 24px "JetBrains Mono", monospace'; g.fillText('● MQTT live', 760, 62);
+  const plot = (y0, col, f, name) => {
+    g.strokeStyle = '#26302c'; g.lineWidth = 2; g.strokeRect(40, y0, 944, 220);
+    for (let i = 1; i < 4; i++) { g.beginPath(); g.moveTo(40, y0 + i * 55); g.lineTo(984, y0 + i * 55); g.stroke(); }
+    g.fillStyle = '#95a39d'; g.font = '500 22px "JetBrains Mono", monospace'; g.fillText(name, 56, y0 + 34);
+    g.strokeStyle = col; g.lineWidth = 4; g.beginPath();
+    for (let i = 0; i <= 200; i++) { const x = 40 + i * 4.72, y = y0 + 120 + f(i) * 70; i ? g.lineTo(x, y) : g.moveTo(x, y); }
+    g.stroke();
+  };
+  plot(100, '#6ea6e8', i => Math.sin(i / 16) * Math.exp(-i / 160), 'pitch  deg');
+  plot(360, '#e1a84d', i => Math.cos(i / 24) * 0.6 + Math.sin(i / 7) * 0.08, 'yaw  deg');
+});
+const scr = group(lap, 0, 1.2, -9.4);
+scr.rotation.x = -0.22;
+rbox(28, 18, 0.6, 0.5, M.laptop, scr, 0, 9, 0);
+box(26, 16, 0.1, new THREE.MeshBasicMaterial({ map: screenTex, toneMapped: false }), scr, 0, 9, 0.32);
+anchor('lap.usb1', lap, 14.1, 0.6, -1);
+anchor('lap.usb2', lap, 14.1, 0.6, 3);
+anchor('lap.air', scr, 0, 18.5, 0);
+tag('Laptop · flashing, debug, dashboard', lap, 0, 21, -9, { dot: DOT.data });
+
+/* ---------- 2-DOF testbed ---------- */
+const tb = group(scene, 36, 0, -6);
+[[-24, -18], [18, -18], [-24, 18], [18, 18]].forEach(([x, z]) => cyl(1.1, 1.1, 1.5, M.rubber, tb, x, 0.75, z, 20));
+rbox(46, 1.2, 40, 0.4, M.plate, tb, -3, 2.1, 0);
+cyl(2.4, 4.6, 4, M.alu, tb, 0, 4.7, 0, 48);
+cyl(3.1, 3.1, 1.0, M.red, tb, 0, 7.2, 0, 40);
+cyl(0.95, 0.95, 0.9, M.black, tb, 1.5, 8.15, 0, 24);                 // yaw encoder
+anchor('tb.encYaw', tb, 1.5, 8.2, 0.95);
+tag('Yaw encoder · E8T', tb, 3.5, 10.5, 2, { dot: DOT.enc });
+
+const ARC_C = 31.6, R_OUT = 23.8, R_IN = 20.2, R_MID = 22, TOP = 46;
+const arcShape = new THREE.Shape();
+arcShape.moveTo(0, ARC_C - R_OUT);
+arcShape.absarc(0, ARC_C, R_OUT, -Math.PI / 2, -Math.PI, true);
+arcShape.lineTo(-R_OUT, TOP); arcShape.lineTo(-R_IN, TOP); arcShape.lineTo(-R_IN, ARC_C);
+arcShape.absarc(0, ARC_C, R_IN, -Math.PI, -Math.PI / 2, false);
+arcShape.lineTo(0, ARC_C - R_OUT);
+add(new THREE.Mesh(new THREE.ExtrudeGeometry(arcShape, { depth: 0.6, bevelEnabled: true, bevelThickness: 0.08, bevelSize: 0.08, bevelSegments: 2, curveSegments: 64 }), M.carbon), tb, 0, 0, -0.3);
+for (let a = -100; a >= -170; a -= 14) { const r = (a * Math.PI) / 180; cyl(0.3, 0.3, 0.9, M.metal, tb, R_MID * Math.cos(r), ARC_C + R_MID * Math.sin(r), 0, 10).rotation.x = Math.PI / 2; }
+
+const SH = 44;
+const shaft = cyl(0.5, 0.5, 22, M.steel, tb, -11.5, SH, 0, 20); shaft.rotation.z = Math.PI / 2;
+rbox(2.2, 3.2, 3.2, 0.3, M.black, tb, -25.2, SH, 0);                   // pitch encoder
+anchor('tb.encPitch', tb, -25.2, SH + 1.7, 0.9);
+tag('Pitch encoder · E8T', tb, -27, SH + 4.2, 0, { dot: DOT.enc });
+
+const quad = group(tb, 0, SH, 0);
+rbox(3, 2.4, 2.4, 0.2, M.alu, quad, -1.5, 0, 0);
+const cplate = rbox(12, 0.3, 12, 0.12, M.alu, quad, 0, 1.4, 0); cplate.rotation.y = Math.PI / 4;
+[Math.PI / 4, -Math.PI / 4].forEach(r => { const b = rbox(40, 1.4, 1.4, 0.3, M.alu, quad, 0, 2.3, 0); b.rotation.y = r; });
+// front is +z (where the camera looks). Facing front, +x is the left side.
+const MOTORS = [
+  { pos: [13.1, 13.1], name: 'front left', spin: 'CW' },
+  { pos: [-13.1, 13.1], name: 'front right', spin: 'CCW' },
+  { pos: [13.1, -13.1], name: 'rear left', spin: 'CCW' },
+  { pos: [-13.1, -13.1], name: 'rear right', spin: 'CW' }
+];
+const props = [];
+MOTORS.forEach(({ pos: [x, z], spin }, i) => {
+  cyl(1.5, 1.5, 1.1, M.motor, quad, x, 3.55, z, 32);
+  cyl(1.55, 1.55, 1.5, i < 2 ? M.bellRed : M.bell, quad, x, 4.85, z, 32);
+  cyl(0.15, 0.15, 1.4, M.steel, quad, x, 6.2, z, 8);
+  const pg = group(quad, x, 6.1, z, i * 0.7);
+  [-1, 1].forEach(s => { const bl = box(4.4, 0.1, 0.85, M.prop, pg, s * 2.4, 0, 0); bl.rotation.x = s * (spin === 'CW' ? 0.22 : -0.22); });
+  cyl(0.45, 0.45, 0.5, M.black, pg, 0, 0, 0, 16);
+  props.push({ g: pg, dir: spin === 'CW' ? -1 : 1 });
+  anchor(`mot${i + 1}`, quad, x, 3.2, z);
+  tag(`Motor ${i + 1} · ${spin}`, quad, x, 8.4, z, { dot: DOT.esc });
+});
+// 4-in-1 ESC hung under the centre plate
+const escTex = canvasTex(256, 256, (g, w, h) => {
+  g.fillStyle = '#1a2a26'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#c8d3cf'; g.font = '600 26px "JetBrains Mono", monospace'; g.fillText('4in1 ESC', 60, 120);
+  g.font = '500 18px "JetBrains Mono", monospace'; g.fillText('DMHC v1.1', 76, 150);
+});
+box(4.6, 0.5, 4.6, [M.pcbEsc, M.pcbEsc, M.pcbEsc, new THREE.MeshStandardMaterial({ map: escTex, roughness: 0.6 }), M.pcbEsc, M.pcbEsc], quad, 3.4, 0.9, 0);
+[[-1, -1], [1, 1], [-1, 1], [1, -1]].forEach(([a, b]) => box(0.9, 0.3, 0.9, M.chip, quad, 3.4 + a * 1.1, 0.5, b * 1.1));
+['s1', 's2', 's3', 's4', 'g'].forEach((n, i) => anchor(`esc.${n}`, quad, 1.15, 0.7, -1.6 + i * 0.8));
+anchor('esc.p+', quad, 3.0, 0.7, 2.35); anchor('esc.p-', quad, 3.8, 0.7, 2.35);
+[[5.7, 2.3], [1.1, 2.3], [5.7, -2.3], [1.1, -2.3]].forEach(([x, z], i) => anchor(`esc.o${i + 1}`, quad, x, 0.95, z));
+tag('4-in-1 ESC (DMHC 160720014INJ)', quad, 5, -1.6, -4, { minor: true });
+// Pi camera on the front of the centre plate, looking forward
+const camG = group(quad, 0, 1.55, 7.2);
+rbox(1.6, 1.1, 1.0, 0.12, M.black, camG, 0, 0.55, 0);
+const camPcb = rbox(2.5, 2.5, 0.16, 0.12, M.pcbCam, camG, 0, 2.2, 0.35); camPcb.rotation.x = -0.18;
+const lensB = rbox(1.0, 1.0, 0.5, 0.1, M.black, camG, 0, 2.25, 0.62); lensB.rotation.x = -0.18;
+const lens = cyl(0.36, 0.36, 0.5, M.lens, camG, 0, 2.3, 0.95, 24); lens.rotation.x = Math.PI / 2 - 0.18;
+anchor('cam', camG, 0, 1.2, -0.2);
+tag('Pi camera · on the drone', camG, 0, 4.4, 0, { dot: DOT.data });
+
+/* ---------- wires ---------- */
+scene.updateMatrixWorld(true);
+
+const stripeTex = canvasTex(64, 8, (g, w, h) => { g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.fillStyle = '#505050'; g.fillRect(36, 0, 28, h); });
+stripeTex.wrapS = THREE.RepeatWrapping;
+
+const conns = [];
+const pickables = [];
+const ARC_LANES = 9;
+// path along the face of the carbon arc, from its lower part up to the top (testbed-local -> world)
+function arcPath(lane, a0 = -128) {
+  const dr = (lane - (ARC_LANES - 1) / 2) * 0.4, z = 0.66, pts = [];
+  for (let a = a0; a >= -180; a -= 8) { const r = (a * Math.PI) / 180, R = R_MID + dr; pts.push(V(R * Math.cos(r), ARC_C + R * Math.sin(r), z)); }
+  pts.push(V(-(R_MID + dr), 40, z));
+  return pts.map(p => p.add(tb.position));
+}
+// bench run onto the testbed plate, then up an arc lane
+const toPlate = lane => [V(12.2, 3.25, -6 + lane * 0.12), V(19, 3.25, -5 + lane * 0.12)];
+function toArc(start, lane, extraUp = 1.4) {
+  const zl = 1.6 + lane * 0.35;
+  const p = [start, start.clone().add(V(0, extraUp, -0.4))];
+  p.push(V(start.x + 1.2, 0.5, Math.min(start.z - 1.5, 3.2)));
+  p.push(V(8, 0.45, zl - 4));
+  return p.concat(toPlate(lane), arcPath(lane));
+}
+const topToQuad = (lane, end) => {
+  const dz = (lane - 4) * 0.35;
+  return [V(-21.4 + tb.position.x, 45.2, 0.9 + dz + tb.position.z), V(-14 + tb.position.x, 45.6, 0.8 + dz + tb.position.z), V(-1 + tb.position.x, 45.4, 2.6 + dz * 0.4 + tb.position.z), V(end.x - 0.8, end.y - 0.6, end.z), end];
+};
+
+function makeWire(points, color, radius, inferred) {
+  const curve = new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0.35);
+  const len = curve.getLength();
+  const segs = Math.max(24, Math.round(len * 3));
+  const m = new THREE.MeshPhysicalMaterial({ color, roughness: 0.42, metalness: 0, clearcoat: 0.7, clearcoatRoughness: 0.35, transparent: true });
+  if (inferred) { const t = stripeTex.clone(); t.needsUpdate = true; t.repeat.set(len / 1.6, 1); m.map = t; }
+  const mesh = new THREE.Mesh(new THREE.TubeGeometry(curve, segs, radius, 12, false), m);
+  mesh.castShadow = true;
+  scene.add(mesh);
+  const hit = new THREE.Mesh(new THREE.TubeGeometry(curve, Math.max(12, segs / 3 | 0), Math.max(radius * 3.2, 0.9), 6, false), new THREE.MeshBasicMaterial({ visible: false }));
+  scene.add(hit);
+  return { mesh, hit, curve, r: radius, color };
+}
+function makeAir(points, color) {
+  const curve = new THREE.CatmullRomCurve3(points);
+  const g = new THREE.BufferGeometry().setFromPoints(curve.getPoints(120));
+  const m = new THREE.LineDashedMaterial({ color, dashSize: 1.6, gapSize: 1.2, transparent: true });
+  const line = new THREE.Line(g, m); line.computeLineDistances(); scene.add(line);
+  const hit = new THREE.Mesh(new THREE.TubeGeometry(curve, 40, 1.2, 6, false), new THREE.MeshBasicMaterial({ visible: false }));
+  scene.add(hit);
+  return { mesh: line, hit, curve, r: 0.3, color };
+}
+
+function conn(def) {
+  def.parts = def.wires.map(w => w.air ? makeAir(w.pts, w.color) : makeWire(w.pts, w.color, w.r ?? 0.22, def.status === 'inferred'));
+  def.parts.forEach(p => { p.hit.userData.conn = def; pickables.push(p.hit); });
+  def.swatch = def.swatch ?? def.wires[0].color;
+  conns.push(def);
+}
+
+const C = { red: 0xd23c34, gnd: 0x1c1e22, esc1: 0xf0b429, esc2: 0xf07f22, esc3: 0x2aa6d8, esc4: 0x8d6ee0, yaw: 0x18a08a, pitch: 0x6cbf3c,
+  usb: 0x8f979d, ribbon: 0xe6dcc0, phase: 0x2c2f34, air: 0x2d6fb3, clk: 0xe8c547, dio: 0x3fb7a0, pi5v: 0xf2f2ee };
+const sag = (a, b, y = 0.4, k = [0.3, 0.7]) => [a, a.clone().add(V(0, 0.3, 0.6)), a.clone().lerp(b, k[0]).setY(y), a.clone().lerp(b, k[1]).setY(y), b.clone().add(V(-0.6, 0.3, 0)), b];
+
+/* power */
+conn({ id: 'psu', group: 'power', status: 'confirmed', name: 'Bench PSU → Y-cable', sub: '12.0 V and GND, one lead',
+  from: 'PSU red (+) and black (−) terminals, set to <code>12.0 V</code>', to: 'Soldered Y-cable splice', sig: '12 V DC for the whole testbed',
+  note: 'Leave the green earth terminal empty. First power-up at a 0.5 A limit, then about 3 A; four motors can pull more than the PSU\'s 5 A, so keep throttle low.',
+  ends: [['psu.pos', 'PSU + / −'], ['y.in+', 'Y-cable']],
+  wires: [{ pts: sag(W('psu.pos'), W('y.in+')), color: C.red, r: 0.32 }, { pts: sag(W('psu.neg'), W('y.in-'), 0.35, [0.25, 0.65]), color: C.gnd, r: 0.32 }] });
+
+const vinRun = (a, b, dz) => { const s = W(a), e = W(b); return [s, s.clone().add(V(1.2, -0.1, 0.2)), V(-26, 0.4, 13.2 + dz), V(-17, 0.4, 9.6 + dz), e.clone().add(V(-1.2, 0, 0)), e]; };
+conn({ id: 'vin', group: 'power', status: 'confirmed', name: 'Y-cable → controller VIN', sub: '12 V into the screw terminal',
+  from: 'Y-cable, thin branch (bare twisted strands)', to: 'Controller VIN screw terminal, input range <code>5–12.6 V</code>', sig: 'Logic current, under 1 A. VIN is also measured on <code>PB0</code> (ADC1_IN8) through a 100 k / 10 k divider.',
+  note: 'Twisted bare strands under the screw, not tinned: solder creeps and works loose.',
+  ends: [['y.a+', 'Y branch'], ['hw.vin+', 'VIN + / −']],
+  wires: [{ pts: vinRun('y.a+', 'hw.vin+', -0.4), color: C.red, r: 0.24 }, { pts: vinRun('y.a-', 'hw.vin-', 0.4), color: C.gnd, r: 0.24 }] });
+
+const escPow = (a, lane, xtIn, xtOut, endName) => {
+  const s = W(a), xi = W(xtIn), xo = W(xtOut), e = W(endName);
+  return [s, s.clone().add(V(1.2, -0.1, 0.1)), V(-30, 0.45, 8 + lane * 0.3), V(-22, 0.45, -6 + lane * 0.3), xi.clone().add(V(-1.4, -0.1, 0)), xi, xo, xo.clone().add(V(1.4, -0.1, 0)), V(0, 0.45, -8 + lane * 0.3), V(7, 0.45, -7.6 + lane * 0.3)]
+    .concat(toPlate(lane), arcPath(lane), topToQuad(lane, e));
+};
+conn({ id: 'escpow', group: 'power', status: 'confirmed', name: 'Y-cable → XT60 → ESC', sub: '12 V motor current path',
+  from: 'Y-cable, thick branch with an XT60', to: '4-in-1 ESC battery pads (its XT60 lead)', sig: '12 V DC, the motor current. ESC and controller share ground through the Y-cable.',
+  note: 'When moving to a 3S LiPo, the PSU side of the Y-cable needs ESC-lead gauge wire. The run up the arm is drawn for readability.',
+  ends: [['y.b+', 'Y branch'], ['xt.in+', 'XT60'], ['esc.p+', 'ESC + / −']],
+  wires: [{ pts: escPow('y.b+', 7, 'xt.in+', 'xt.out+', 'esc.p+'), color: C.red, r: 0.34 }, { pts: escPow('y.b-', 8, 'xt.in-', 'xt.out-', 'esc.p-'), color: C.gnd, r: 0.34 }] });
+
+const p5 = W('hw.pi5v'), pp = W('pi.pwr');
+conn({ id: 'pipwr', group: 'power', status: 'inferred', name: 'Controller Pi 5V → Raspberry Pi', sub: 'USB-C, 5 V',
+  from: 'Controller "Pi 5V" USB-C output (5 V, made from VIN)', to: 'Pi USB-C power input', sig: '5 V DC for the Pi and its camera',
+  note: 'The Pi\'s 5 V source is not decided. This uses the controller\'s own Pi supply now that the separate power board is gone; a stand-alone 5 V USB-C adapter works too.',
+  ends: [['hw.pi5v', 'Pi 5V out'], ['pi.pwr', 'Pi power']],
+  wires: [{ pts: [p5, p5.clone().add(V(-1.2, -0.2, 0)), V(-15.5, 0.4, 11), V(-17.5, 0.4, 0), V(-15, 0.4, -15), V(pp.x, 0.4, pp.z + 2.4), pp.clone().add(V(0, 0, 0.7)), pp], color: C.pi5v, r: 0.24 }] });
+
+/* ESC signals: M3 and M4 ports */
+const sigWire = (pin, lane, escPad) => toArc(W(pin), lane).concat(topToQuad(lane, W(escPad)));
+const ESC = [
+  [1, C.esc1, 'hw.M3.3', 0, 'M3 pin 3', 'PB6', 'TIM4_CH1', 'TIM4'],
+  [2, C.esc2, 'hw.M3.4', 1, 'M3 pin 4', 'PB7', 'TIM4_CH2', 'TIM4'],
+  [3, C.esc3, 'hw.M4.3', 2, 'M4 pin 3', 'PB4', 'TIM3_CH1', 'TIM3'],
+  [4, C.esc4, 'hw.M4.4', 3, 'M4 pin 4', 'PB5', 'TIM3_CH2', 'TIM3']
+];
+const escNote = {
+  1: 'Working in bsp_esc: 3 s arming at 1000 µs, motors start turning around 1200 (1100 is the dead zone).',
+  3: 'PB4 is a JTAG pin at reset, so CubeMX SYS → Debug stays on Serial Wire, which the ST-LINK uses anyway.'
+};
+ESC.forEach(([n, color, pin, lane, port, gpio, ch, timer]) => conn({
+  id: 'esc' + n, group: 'esc', status: 'confirmed', name: `ESC ${n} signal`, sub: `${port} · ${gpio} ${ch}`,
+  from: `Controller ${port} → <code>${gpio}</code> (${ch})`, to: `ESC signal input ${n}`,
+  sig: `400 Hz PWM on <code>${timer}</code> (84 MHz): PSC 83, ARR 2499, so CCR = pulse in µs, <code>1000–2000</code>.`,
+  note: escNote[n] || '',
+  ends: [[pin, `${gpio} · ${port}`], [`esc.s${n}`, `ESC in ${n}`]],
+  wires: [{ pts: sigWire(pin, lane, `esc.s${n}`), color }] }));
+conn({ id: 'escgnd', group: 'esc', status: 'confirmed', name: 'ESC signal ground', sub: 'M3 pin 2 → ESC GND',
+  from: 'Controller M3 pin 2 (GND)', to: 'ESC signal ground pad', sig: 'Reference for the four PWM signals. All M port pin 2s are the same ground, so M4 needs no GND wire.',
+  note: 'The ESC gets signal + GND only. Pins 1 and 6 of every M port are brushed-motor outputs: never connect them.',
+  ends: [['hw.M3.2', 'GND · M3 pin 2'], ['esc.g', 'ESC GND']],
+  wires: [{ pts: sigWire('hw.M3.2', 4, 'esc.g'), color: C.gnd }] });
+
+/* motors */
+MOTORS.forEach(({ pos: [mx, mz], name, spin }, i) => {
+  const o = W(`esc.o${i + 1}`), m = W(`mot${i + 1}`), dir = V(Math.sign(mx), 0, Math.sign(mz)).normalize();
+  const side = V(-dir.z, 0, dir.x);
+  const wires = [-1, 0, 1].map(k => {
+    const off = side.clone().multiplyScalar(k * 0.22);
+    const a = o.clone().add(off), b = m.clone().add(off).add(dir.clone().multiplyScalar(-1.6));
+    return { pts: [a, a.clone().add(dir.clone().multiplyScalar(1.2)).add(V(0, 0.3, 0)), a.clone().lerp(b, 0.5).setY(SH + 3.2), b.clone().setY(SH + 3.15), m.clone().add(off).add(V(0, 0.3, 0))], color: C.phase, r: 0.12 };
+  });
+  conn({ id: 'mot' + (i + 1), group: 'esc', status: 'inferred', name: `ESC output ${i + 1} → motor ${i + 1}`, sub: `${name} · ${spin}`,
+    from: `ESC motor output ${i + 1}`, to: `Cobra CM2204 1960 KV, ${name}, spins ${spin}`, sig: '3-phase drive from the ESC',
+    note: 'Which ESC output drives which arm is not recorded yet. The arm and spin shown follow the planned diagonal mixer (1 FL CW, 2 FR CCW, 3 RL CCW, 4 RR CW). Swapping any two phase wires reverses a motor.',
+    ends: [[`esc.o${i + 1}`, `ESC out ${i + 1}`], [`mot${i + 1}`, `Motor ${i + 1}`]], wires });
+});
+
+/* encoders */
+const yawStart = W('hw.M1');
+conn({ id: 'encyaw', group: 'enc', status: 'planned', name: 'Yaw joint encoder', sub: 'M1 · TIM5 PA0 / PA1', flow: -1,
+  from: 'Controller M1: pin 3 <code>PA0</code> (A, TIM5_CH1), pin 4 <code>PA1</code> (B, TIM5_CH2), pin 5 <code>+5 V</code>, pin 2 <code>GND</code>', to: 'US Digital E8T on the base (vertical) joint, cable order 5V A GND B',
+  sig: '<code>TIM5</code> in encoder mode TI12, 32-bit counter. 720 CPR × 4 = 2880 counts per turn.',
+  note: 'Needs an adapter cable: the port order is GND A B 5V on pins 2–5. The pitch encoder shares this 5 V and GND.',
+  ends: [['hw.M1', 'M1 · PA0 / PA1'], ['tb.encYaw', 'Yaw encoder']],
+  wires: [{ pts: [yawStart, yawStart.clone().add(V(0, 1.5, -0.6)), V(yawStart.x + 1, 0.55, 2.0), V(8, 0.55, -1.2), V(12.2, 3.35, -2.0), V(26, 3.35, -3.2), V(33, 3.4, -4.4), V(36.6, 6.4, -4.6), W('tb.encYaw').add(V(0, 0.2, 0.5)), W('tb.encYaw')], color: C.yaw, r: 0.3 }] });
+const ep = W('tb.encPitch');
+conn({ id: 'encpitch', group: 'enc', status: 'planned', name: 'Pitch joint encoder', sub: 'M2 · TIM2 PA15 / PB3', flow: -1,
+  from: 'Controller M2: pin 3 <code>PA15</code> (A, TIM2_CH1), pin 4 <code>PB3</code> (B, TIM2_CH2). 5 V and GND shared from M1.', to: 'US Digital E8T at the top of the arm (horizontal shaft)',
+  sig: '<code>TIM2</code> in encoder mode TI12, 32-bit counter, 2880 counts per turn',
+  note: 'PA15 and PB3 are JTAG pins at reset; Serial Wire debug frees them. Sign check still to do: nose up should count positive.',
+  ends: [['hw.M2', 'M2 · PA15 / PB3'], ['tb.encPitch', 'Pitch encoder']],
+  wires: [{ pts: toArc(W('hw.M2'), 6).concat([V(tb.position.x - 22.6, 45.6, tb.position.z + 0.7), V(tb.position.x - 23.4, 47.0, tb.position.z + 0.5), V(ep.x + 0.4, ep.y + 1.0, ep.z), ep]), color: C.pitch, r: 0.3 }] });
+
+/* data */
+const u1 = W('hw.usb1'), l1 = W('lap.usb1');
+conn({ id: 'usb1', group: 'data', status: 'confirmed', name: 'Laptop ↔ USB-C port 1', sub: 'USART1 PA9 / PA10 · COM9',
+  from: 'Laptop USB (shows up as <code>COM9</code>)', to: 'Controller USB-C port 1 → CH9102F → USART1 <code>PA9</code> TX / <code>PA10</code> RX',
+  sig: 'Flashing through the ROM bootloader (stm32loader, <code>-R -B</code>) and the debug console',
+  note: 'DTR and RTS drive reset and BOOT0, which is how stm32loader enters the bootloader. Replug or reset after flashing so the program runs.',
+  ends: [['lap.usb1', 'Laptop USB'], ['hw.usb1', 'USB 1 · USART1']],
+  wires: [{ pts: [l1, l1.clone().add(V(1.5, 0, 0.3)), V(-24, 0.4, -27), V(-17, 0.4, -6), V(u1.x, 0.4, u1.z - 2.5), u1.clone().add(V(0, 0, -0.8)), u1], color: C.usb, r: 0.3 }] });
+const sl = W('stl.usb'), l2 = W('lap.usb2');
+const dup = (a, b, k) => { const s = W(a), e = W(b); return [s, s.clone().add(V(1.0, 0.4, 0)), s.clone().lerp(e, 0.35).setY(3.4 + k * 0.25), s.clone().lerp(e, 0.75).setY(3.8 + k * 0.25), e.clone().add(V(0, 1.4, 0.3)), e]; };
+conn({ id: 'swd', group: 'data', status: 'confirmed', name: 'ST-LINK ↔ H1 debug header', sub: 'SWD · PA14 SWCLK / PA13 SWDIO', swatch: C.clk,
+  from: 'ST-LINK, USB to the laptop', to: 'Controller H1: pin 3 <code>PA14</code> SWCLK, pin 7 <code>PA13</code> SWDIO, pin 5 <code>GND</code>. Pin 1 (3V3) left empty.',
+  sig: 'Serial Wire Debug from STM32CubeIDE: breakpoints and Live Expressions',
+  note: 'Works with the 12 V supply and USB plugged in at the same time. Pausing in the debugger does not stop the PWM timers, so the motors keep their last command.',
+  ends: [['stl.clk', 'ST-LINK'], ['hw.H1.3', 'H1 · SWCLK SWDIO GND']],
+  wires: [
+    { pts: dup('stl.clk', 'hw.H1.3', 0), color: C.clk, r: 0.13 },
+    { pts: dup('stl.gnd', 'hw.H1.5', 1), color: C.gnd, r: 0.13 },
+    { pts: dup('stl.dio', 'hw.H1.7', 2), color: C.dio, r: 0.13 },
+    { pts: [l2, l2.clone().add(V(1.6, -0.2, 0.4)), V(-31, 0.4, -26), V(-39, 0.4, -14), V(-38.5, 0.4, 14), V(-33, 0.4, 24), sl.clone().add(V(-1.4, -0.1, 0)), sl], color: C.usb, r: 0.26 }] });
+const u2 = W('hw.usb2'), pu = W('pi.usb');
+conn({ id: 'usb2', group: 'data', status: 'planned', name: 'Raspberry Pi ↔ USB-C port 2', sub: 'USART3 PD8 / PD9 · 1 Mbaud',
+  from: 'Pi USB-A port', to: 'Controller USB-C port 2 → CH9102F → USART3 <code>PD8</code> TX / <code>PD9</code> RX',
+  sig: 'Telemetry out, commands in, at 1 Mbaud (Hiwonder\'s rate for this link)',
+  note: 'Port 2 keeps port 1 free for flashing. If commands stop arriving, the firmware drops every ESC back to 1000 µs.',
+  ends: [['pi.usb', 'Pi USB'], ['hw.usb2', 'USB 2 · USART3']],
+  wires: [{ pts: [pu, pu.clone().add(V(1.4, 0, 0)), V(1, 0.4, -19), V(-2, 0.4, -6), V(u2.x, 0.4, u2.z - 2.5), u2.clone().add(V(0, 0, -0.8)), u2], color: C.usb, r: 0.3 }] });
+const pc = W('pi.csi'), cm = W('cam');
+conn({ id: 'cam', group: 'data', status: 'planned', name: 'Camera on the drone → Pi', sub: 'CSI ribbon up the arm', flow: -1,
+  from: 'Pi camera on the front of the drone\'s centre plate, looking forward', to: 'Pi CSI connector',
+  sig: 'Video for object tracking and obstacle detection on the Pi',
+  note: 'The camera turns with both joints, so the cable needs a slack loop at each joint. A standard ribbon is too short for this run: use a long CSI ribbon or a USB camera.',
+  ends: [['cam', 'Camera'], ['pi.csi', 'CSI']],
+  wires: [{ pts: [pc, pc.clone().add(V(0, 1.0, 0.8)), V(2, 0.4, -20), V(7, 0.45, -10.5)].concat(toPlate(5), arcPath(5), topToQuad(5, cm)), color: C.ribbon, r: 0.2 }] });
+const pa = W('pi.air'), la = W('lap.air');
+conn({ id: 'mqtt', group: 'data', status: 'planned', name: 'Pi → dashboard', sub: 'Wi-Fi · MQTT',
+  from: 'Raspberry Pi (MQTT client)', to: 'Dashboard: live telemetry, commands, logging', sig: 'Wi-Fi, MQTT messages',
+  ends: [['pi.air', 'Pi Wi-Fi'], ['lap.air', 'Dashboard']],
+  wires: [{ air: true, pts: [pa, pa.clone().lerp(la, 0.5).add(V(0, 22, 0)), la], color: C.air }] });
+
+/* on-board parts: no wires, clickable spots */
+const spots = [
+  { id: 'mcu', name: 'Microcontroller', sub: 'STM32F407VET6', at: [0.4, T + 0.3, -0.4], size: [3, 0.6, 3], status: 'confirmed',
+    from: 'STM32F407VET6, Cortex-M4F, 512 KB flash', sig: '168 MHz from the 16 MHz crystal: PLL M 8, N 168, P 2. APB1 timers 84 MHz, APB2 timers 168 MHz.' },
+  { id: 'imu', name: 'IMU', sub: 'QMI8658 · I2C2', at: [-2.6, T + 0.1, 2.4], size: [1.2, 0.5, 1.2], status: 'confirmed',
+    from: 'QMI8658 accel + gyro (no magnetometer)', sig: 'I2C2: <code>PB10</code> SCL, <code>PB11</code> SDA, address <code>0x6A</code>. Interrupt on <code>PB12</code>.' },
+  { id: 'led', name: 'Status LED', sub: 'PE10, active low', at: [-5.8, T + 0.1, 4.0], size: [0.8, 0.5, 0.8], status: 'confirmed',
+    from: 'LED_SYS', sig: '<code>PE10</code> output. On when the pin is LOW.' },
+  { id: 'keys', name: 'Keys', sub: 'KEY1 PE1 · KEY2 PE0', at: [-4.0, T + 0.3, 4.0], size: [2.2, 0.8, 1.1], status: 'confirmed',
+    from: 'KEY1 and KEY2', sig: '<code>PE1</code> and <code>PE0</code> inputs with pull-ups on the board. Pressed reads LOW.' },
+  { id: 'buz', name: 'Buzzer', sub: 'PA8 · passive', at: [3.4, T + 0.3, 3.0], size: [1.5, 0.8, 1.5], status: 'confirmed',
+    from: 'Passive buzzer driven by an S8050 transistor', sig: '<code>PA8</code>. Needs a tone: TIM1_CH1 with PSC 167, ARR 499, CCR 250 gives 2 kHz.' },
+  { id: 'bat', name: 'Supply voltage sense', sub: 'PB0 · ADC1_IN8', at: [-5.05, T + 0.1, 0.4], size: [1.2, 0.5, 0.8], status: 'confirmed',
+    from: '100 k / 10 k divider on VIN', sig: '<code>PB0</code> = ADC1_IN8. V_in = V_adc × 11.' },
+  { id: 'pwm', name: 'PWM headers J1–J5', sub: 'unused', at: [5.6, T + 0.4, 0], size: [2.2, 1, 5.6], status: 'confirmed',
+    from: 'Servo headers on the right edge', sig: 'Free. The ESCs moved to the M3 and M4 ports, so nothing plugs in here.' }
+];
+const ring = new THREE.Mesh(new THREE.TorusGeometry(1, 0.06, 8, 48), new THREE.MeshBasicMaterial({ color: 0x2e8b57, toneMapped: false }));
+ring.rotation.x = -Math.PI / 2; ring.visible = false; scene.add(ring);
+spots.forEach(s => {
+  const hit = new THREE.Mesh(new THREE.BoxGeometry(...s.size), new THREE.MeshBasicMaterial({ visible: false }));
+  hit.position.set(...s.at); hw.add(hit);
+  const d = Object.assign({ group: 'board', parts: [], swatch: 0x1d3f8f, spot: hit, to: 'On the controller board' }, s);
+  hit.userData.conn = d; pickables.push(hit); conns.push(d);
+});
+scene.updateMatrixWorld(true);
+
+/* ---------- panel ---------- */
+const GROUPS = [['power', 'Power'], ['esc', 'ESC and motors'], ['enc', 'Joint encoders'], ['data', 'Data, debug, camera'], ['board', 'On the controller']];
+const groupName = Object.fromEntries(GROUPS);
+const list = document.getElementById('list');
+const hex = c => '#' + new THREE.Color(c).getHexString();
+const statusName = { confirmed: 'Confirmed', planned: 'Planned', inferred: 'Inferred' };
+GROUPS.forEach(([g, label]) => {
+  const sec = document.createElement('section'); sec.className = 'group'; sec.dataset.g = g;
+  const items = conns.filter(c => c.group === g);
+  sec.innerHTML = `<h2>${label}<i>${items.length}</i></h2>`;
+  items.forEach(c => {
+    const b = document.createElement('button'); b.className = 'item'; b.type = 'button';
+    b.innerHTML = `<i class="sw" style="background:${hex(c.swatch)}"></i><span class="nm">${c.name}<span class="sub">${c.sub}</span></span><i class="st ${c.status}" title="${statusName[c.status]}"></i>`;
+    b.addEventListener('click', () => select(selected === c ? null : c));
+    c.btn = b; sec.appendChild(b);
+  });
+  list.appendChild(sec);
+});
+document.querySelectorAll('.chips button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.chips button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  const f = b.dataset.f;
+  document.querySelectorAll('.group').forEach(s => s.hidden = f !== 'all' && s.dataset.g !== f);
+  filter = f; refresh();
+}));
+
+/* ---------- selection, hover, signal pulses ---------- */
+let selected = null, hovered = null, filter = 'all';
+const pinTags = [];
+const detail = document.getElementById('detail');
+const emptyDetail = detail.innerHTML;
+const pulseGeo = new THREE.SphereGeometry(1, 14, 10);
+let pulses = [];
+function setOpacity(c, o) { c.parts.forEach(p => { p.mesh.material.opacity = o; p.mesh.material.depthWrite = o > 0.5; }); }
+function refresh() {
+  conns.forEach(c => {
+    const inFilter = filter === 'all' || c.group === filter;
+    let o = inFilter ? 1 : 0.1;
+    if (selected) o = c === selected ? 1 : 0.1;
+    setOpacity(c, o);
+    const lit = c === hovered || c === selected;
+    c.parts.forEach(p => { if (p.mesh.material.emissive) p.mesh.material.emissive.set(lit ? p.mesh.material.color.clone().multiplyScalar(0.3) : 0x000000); });
+  });
+}
+function setPulses(c) {
+  pulses.forEach(p => scene.remove(p.m)); pulses = [];
+  if (!c || !c.parts.length) return;
+  c.parts.forEach(part => {
+    const col = new THREE.Color(part.color).lerp(new THREE.Color(0xffffff), 0.6);
+    const n = Math.max(2, Math.min(6, Math.round(part.curve.getLength() / 25)));
+    for (let k = 0; k < n; k++) {
+      const m = new THREE.Mesh(pulseGeo, new THREE.MeshBasicMaterial({ color: col, toneMapped: false }));
+      m.scale.setScalar(Math.max(part.r * 1.7, 0.3));
+      scene.add(m);
+      pulses.push({ m, curve: part.curve, k: k / n, dir: c.flow ?? 1 });
+    }
+  });
+}
+function select(c) {
+  selected = c;
+  pinTags.splice(0).forEach(o => o.parent.remove(o));
+  conns.forEach(x => x.btn && x.btn.setAttribute('aria-current', x === c));
+  ring.visible = false;
+  setPulses(c);
+  if (!c) { detail.innerHTML = emptyDetail; detail.style.removeProperty('--wire'); refresh(); return; }
+  detail.style.setProperty('--wire', hex(c.swatch));
+  detail.innerHTML = `<h3>${c.name}</h3><div class="meta"><span class="pill ${c.status}">${statusName[c.status]}</span><span class="grp">${groupName[c.group]}</span></div>
+    <ol class="route"><li><div><span class="k">From</span>${c.from}</div></li><li><div><span class="k">To</span>${c.to}</div></li></ol>
+    <p class="sig"><span class="k">Signal</span>${c.sig}</p>${c.note ? `<p class="note">${c.note}</p>` : ''}`;
+  (c.ends || []).forEach(([a, text]) => {
+    const el = document.createElement('div'); el.className = 'pin'; el.textContent = text;
+    const o = new THREE.CSS2DObject(el); anchors[a].add(o); pinTags.push(o);
+  });
+  if (c.spot) {
+    const p = V(0, 0, 0); c.spot.getWorldPosition(p);
+    ring.position.set(p.x, p.y + 0.2, p.z); ring.scale.setScalar(Math.max(c.size[0], c.size[2]) * 0.75); ring.visible = true;
+    ring.material.color.set(tok('--accent'));
+    const el = document.createElement('div'); el.className = 'pin'; el.textContent = c.sub;
+    const o = new THREE.CSS2DObject(el); c.spot.add(o); pinTags.push(o);
+  }
+  if (c.btn && window.matchMedia('(min-width: 861px)').matches) c.btn.scrollIntoView({ block: 'nearest' });
+  refresh();
+}
+
+const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(), tip = document.getElementById('tip');
+function pick(ev) {
+  const r = renderer.domElement.getBoundingClientRect();
+  mouse.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(mouse, camera);
+  const hits = ray.intersectObjects(pickables.filter(h => filter === 'all' || h.userData.conn.group === filter), false);
+  return hits.length ? hits[0].object.userData.conn : null;
+}
+renderer.domElement.addEventListener('pointermove', ev => {
+  if (ev.pointerType !== 'mouse') return;
+  const c = pick(ev);
+  if (c !== hovered) { hovered = c; refresh(); renderer.domElement.style.cursor = c ? 'pointer' : ''; }
+  if (c) {
+    const r = stage.getBoundingClientRect();
+    tip.innerHTML = `<b>${c.name}</b><code>${c.sub}</code>`; tip.hidden = false;
+    const x = Math.min(ev.clientX - r.left + 14, r.width - tip.offsetWidth - 8);
+    tip.style.left = x + 'px'; tip.style.top = (ev.clientY - r.top + 14) + 'px';
+  } else tip.hidden = true;
+});
+renderer.domElement.addEventListener('pointerleave', () => { tip.hidden = true; hovered = null; refresh(); });
+let down = null;
+renderer.domElement.addEventListener('pointerdown', ev => { down = [ev.clientX, ev.clientY]; });
+renderer.domElement.addEventListener('pointerup', ev => {
+  if (!down || Math.hypot(ev.clientX - down[0], ev.clientY - down[1]) > 5) return;
+  const c = pick(ev); select(c && c !== selected ? c : null);
+});
+addEventListener('keydown', e => { if (e.key === 'Escape') select(null); });
+
+/* ---------- camera views ---------- */
+const VIEWS = {
+  'v-all': [V(-22, 118, 168), V(-2, 14, -10)],
+  'v-board': [V(-14, 28, 40), V(-7, 1.5, 11)],
+  'v-power': [V(-70, 40, 62), V(-34, 3, 6)],
+  'v-rig': [V(88, 62, 58), V(28, 24, -6)],
+  'v-drone': [V(58, 64, 44), V(36, 45, -4)]
+};
+let tween = null;
+function goView(id, instant, ms = 900) {
+  const [p, t] = VIEWS[id];
+  Object.keys(VIEWS).forEach(v => document.getElementById(v).setAttribute('aria-pressed', v === id));
+  if (instant || reduceMotion()) { camera.position.copy(p); controls.target.copy(t); controls.update(); return; }
+  tween = { p0: camera.position.clone(), t0: controls.target.clone(), p, t, s: performance.now(), ms };
+}
+Object.keys(VIEWS).forEach(id => document.getElementById(id).addEventListener('click', () => goView(id)));
+const tagBtn = document.getElementById('v-tags');
+tagBtn.addEventListener('click', () => { const on = tagBtn.getAttribute('aria-pressed') !== 'true'; tagBtn.setAttribute('aria-pressed', on); document.body.classList.toggle('no-tags', !on); });
+const spinBtn = document.getElementById('v-spin');
+let spinning = false;
+spinBtn.addEventListener('click', () => { spinning = !spinning; spinBtn.setAttribute('aria-pressed', spinning); });
+controls.addEventListener('start', () => { tween = null; });
+// open slightly wide, then settle into the overview
+camera.position.copy(V(-60, 150, 210)); controls.target.copy(V(-6, 6, -8)); controls.update();
+goView('v-all', false, 1600);
+if (stage.clientWidth < 600) tagBtn.click();
+
+/* ---------- loop ---------- */
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h); labelRenderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.fov = w < 600 ? 46 : 34;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage);
+resize();
+const ease = x => 1 - Math.pow(1 - x, 3);
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (tween) {
+    const k = Math.min(1, (now - tween.s) / tween.ms), e = ease(k);
+    camera.position.lerpVectors(tween.p0, tween.p, e);
+    controls.target.lerpVectors(tween.t0, tween.t, e);
+    if (k >= 1) tween = null;
+  }
+  const still = reduceMotion();
+  if (spinning && !still) props.forEach(p => { p.g.rotation.y += p.dir * dt * 26; });
+  pulses.forEach(p => {
+    let t = still ? p.k : ((now / 2400) + p.k) % 1;
+    if (p.dir < 0) t = 1 - t;
+    p.m.position.copy(p.curve.getPointAt(t));
+  });
+  document.body.classList.toggle('far', camera.position.distanceTo(controls.target) > 80);
+  controls.update();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+refresh();
+};
+// canvas labels need the web fonts, so wait for them (but never longer than 1.5 s)
+let started = false;
+const go = () => { if (!started) { started = true; start(); } };
+(document.fonts && document.fonts.ready ? Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]) : Promise.resolve()).then(go);
+})();
+</script>
+
+</body></html>

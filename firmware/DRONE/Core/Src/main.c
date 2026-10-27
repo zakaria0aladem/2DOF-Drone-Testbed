@@ -57,6 +57,7 @@ UART_HandleTypeDef huart3;
 /* USER CODE BEGIN PV */
 volatile float yaw_ang =0;
 volatile float pitch_ang =0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -135,6 +136,8 @@ int main(void)
     /* USER CODE BEGIN 3 */
 
 	  yaw_ang = ENC_GetDeg(ENC_YAW);
+	  pitch_ang = ENC_GetDeg(ENC_PITCH);
+
 	  ESC_Update();       // PID: finishes the ESC arming sequence
 	       // PID
 	  //LED_Update();
