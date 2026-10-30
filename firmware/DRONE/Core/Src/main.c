@@ -139,7 +139,7 @@ int main(void)
 	  pitch_ang = ENC_GetDeg(ENC_PITCH);
 
 	  ESC_Update();       // PID: finishes the ESC arming sequence
-	       // PID
+	  PID_Print();        // PID: angle, output, left/right motor speeds to Tera Term
 	  //LED_Update();
 	  LED_Update();
 /*
