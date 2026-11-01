@@ -59,6 +59,8 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define OLED_SDA_Pin GPIO_PIN_3
+#define OLED_SDA_GPIO_Port GPIOC
 #define YAW_A_Pin GPIO_PIN_0
 #define YAW_A_GPIO_Port GPIOA
 #define YAW_B_Pin GPIO_PIN_1
@@ -69,6 +71,8 @@ void Error_Handler(void);
 #define IMU_SCL_GPIO_Port GPIOB
 #define IMU_SDA_Pin GPIO_PIN_11
 #define IMU_SDA_GPIO_Port GPIOB
+#define OLED_SCL_Pin GPIO_PIN_13
+#define OLED_SCL_GPIO_Port GPIOB
 #define BUZZER_Pin GPIO_PIN_8
 #define BUZZER_GPIO_Port GPIOA
 #define PITCH_A_Pin GPIO_PIN_15

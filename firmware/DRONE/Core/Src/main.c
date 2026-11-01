@@ -26,6 +26,7 @@
 #include "bsp_enc.h"
 #include "bsp_imu.h"      // IMU
 #include "bsp_pid.h"      // PID
+#include "bsp_oled.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -57,7 +58,8 @@ UART_HandleTypeDef huart3;
 /* USER CODE BEGIN PV */
 volatile float yaw_ang =0;
 volatile float pitch_ang =0;
-
+volatile uint8_t oled_found = 0;
+uint32_t oled_last_ms = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -125,6 +127,12 @@ int main(void)
   HAL_TIM_Base_Start_IT(&htim6);   // PID: start the 500 Hz control loop
   /*0.5s on and 0.5s off*/
   LED_Blink(1000);
+  oled_found = OLED_Init();
+  /* OLED test: one line across the middle */
+  for(uint8_t x = 0; x < 128; x++){
+	  OLED_SetPixel(x, 16, 1);
+  }
+  OLED_Update();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -142,6 +150,17 @@ int main(void)
 	  PID_Print();        // PID: angle, output, left/right motor speeds to Tera Term
 	  //LED_Update();
 	  LED_Update();
+	  /* OLED: redraw angle, target and error 5 times a second */
+	  if(HAL_GetTick() - oled_last_ms >= 200){
+		  oled_last_ms = HAL_GetTick();
+		  float angle  = IMU_GetData()->pitch;   /* same angle the PID uses */
+		  float target = PID_GetTarget();
+		  OLED_Clear();
+		  OLED_Print(0, 0,  "Angle:");   OLED_PrintFloat(54, 0,  angle);
+		  OLED_Print(0, 11, "Target:");  OLED_PrintFloat(54, 11, target);
+		  OLED_Print(0, 22, "Error:");   OLED_PrintFloat(54, 22, target - angle);
+		  OLED_Update();
+	  }
 /*
 	  if(ESC_IsArmed()){
 		  ESC_Set(1, 1200);
@@ -544,16 +563,30 @@ static void MX_GPIO_Init(void)
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOH_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(OLED_SDA_GPIO_Port, OLED_SDA_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(OLED_SCL_GPIO_Port, OLED_SCL_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : OLED_SDA_Pin */
+  GPIO_InitStruct.Pin = OLED_SDA_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(OLED_SDA_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LED_Pin */
   GPIO_InitStruct.Pin = LED_Pin;
@@ -561,6 +594,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LED_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : OLED_SCL_Pin */
+  GPIO_InitStruct.Pin = OLED_SCL_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(OLED_SCL_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : BUZZER_Pin */
   GPIO_InitStruct.Pin = BUZZER_Pin;
@@ -585,7 +625,7 @@ static void MX_GPIO_Init(void)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if(htim->Instance == TIM6){
 		IMU_Update();
-		PID_Update();
+		//PID_Update();
 	}
 }
 

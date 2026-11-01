@@ -141,6 +141,11 @@ void PID_Init(void){
 
 void PID_SetTarget(float target_deg){
 	target = target_deg;
+
+}
+
+float PID_GetTarget(void){
+	return target;
 }
 
 /*one control step, called from the TIM6 interrupt every 2 ms*/
