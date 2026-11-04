@@ -625,7 +625,7 @@ static void MX_GPIO_Init(void)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if(htim->Instance == TIM6){
 		IMU_Update();
-		//PID_Update();
+		PID_Update();
 	}
 }
 
