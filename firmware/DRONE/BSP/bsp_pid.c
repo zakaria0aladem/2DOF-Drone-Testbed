@@ -51,7 +51,7 @@ static const int16_t motor_trim_us[5] = {
 	0,		/* unused */
 	0,		/* motor 1 top-right    */
 	0,		/* motor 2 top-left     */
-	20,		/* motor 3 bottom-left: stalls earlier than motor 2 (demo trim) */
+	0,		/* motor 3 bottom-left (was 20 before ESC calibration) */
 	0,		/* motor 4 bottom-right */
 };
 
