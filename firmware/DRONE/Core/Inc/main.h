@@ -89,6 +89,8 @@ void Error_Handler(void);
 #define ESC1_GPIO_Port GPIOB
 #define ESC2_Pin GPIO_PIN_7
 #define ESC2_GPIO_Port GPIOB
+#define KEY1_Pin GPIO_PIN_1
+#define KEY1_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
 

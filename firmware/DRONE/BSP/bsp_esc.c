@@ -14,13 +14,22 @@ extern TIM_HandleTypeDef htim4;
 
 #define MIN 1000
 #define MAX 2000
-#define ARM 3000
+#define ARM 6000
 
 static uint32_t arm_start_time_ms = 0;
 static uint8_t arm_state = 0;
+static uint8_t arm_requested = 0;
+
+void ESC_Arm(void){
+	if(arm_state ==0 ){
+		arm_requested = 1;
+		arm_start_time_ms = HAL_GetTick();
+	}
+}
 
 void ESC_Init(void){
 	arm_state = 0;
+	arm_requested = 0;
 	__HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_1,MIN);
 	__HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_2,MIN);
 	__HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_1,MIN);
@@ -31,7 +40,7 @@ void ESC_Init(void){
 	HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
 	HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_2);
 
-	arm_start_time_ms = HAL_GetTick();
+
 }
 
 void ESC_Set(uint8_t motor, uint16_t pulse_us){
@@ -71,7 +80,7 @@ uint8_t ESC_IsArmed(void){
 
 
 void ESC_Update(void){
-	if(HAL_GetTick()-arm_start_time_ms >=ARM){
+	if(arm_requested == 1 && HAL_GetTick()-arm_start_time_ms >=ARM){
 		arm_state = 1;
 	}
 	else{

@@ -15,6 +15,7 @@ void ESC_Set(uint8_t motor, uint16_t pulse_ms);
 void ESC_StopAll(void);
 uint8_t ESC_IsArmed(void);
 void ESC_Update(void);
+void ESC_Arm(void);
 
 
 

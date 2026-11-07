@@ -17,7 +17,7 @@
    difference between the two sides is easy to see and hear */
 #define KP				10.0f	/* us per deg of error           */
 #define KI				0.0f	/* us per deg*s of error (0 = PD) */
-#define KD				0.5f	/* us per deg/s of rotation rate */
+#define KD				0.8f	/* us per deg/s of rotation rate */
 
 #define DT_S			0.002f	/* PID_Update runs from TIM6 at 500 Hz       */
 #define BASE_US			1200	/* throttle both sides get before correction */
