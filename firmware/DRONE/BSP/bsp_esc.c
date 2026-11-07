@@ -94,3 +94,11 @@ void ESC_StopAll(void){
 	__HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_1,MIN);
 	__HAL_TIM_SET_COMPARE(&htim4,TIM_CHANNEL_2,MIN);
 }
+
+/* 1 while K1 was pressed but the countdown is not finished yet */
+uint8_t ESC_IsCountingDown(void){
+	if(arm_requested == 1 && arm_state == 0){
+		return 1;
+	}
+	return 0;
+}

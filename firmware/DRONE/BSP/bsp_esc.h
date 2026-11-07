@@ -16,6 +16,7 @@ void ESC_StopAll(void);
 uint8_t ESC_IsArmed(void);
 void ESC_Update(void);
 void ESC_Arm(void);
+uint8_t ESC_IsCountingDown(void);
 
 
 

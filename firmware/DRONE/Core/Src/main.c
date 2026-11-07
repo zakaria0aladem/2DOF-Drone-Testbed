@@ -28,6 +28,7 @@
 #include "bsp_pid.h"      // PID
 #include "bsp_oled.h"
 #include "bsp_key.h"
+#include "bsp_buzzer.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -62,6 +63,8 @@ volatile float yaw_ang =0;
 volatile float pitch_ang =0;
 volatile uint8_t oled_found = 0;
 uint32_t oled_last_ms = 0;
+uint32_t arm_beep_ms = 0;     /* when the last countdown beep started */
+uint8_t armed_beeped = 0;     /* 1 = the long "armed" beep was already played */
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -124,7 +127,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   LED_Init();
   ESC_Init();
-
+  BUZZER_Init();
   ENC_Init();
   IMU_Init();             // IMU
   PID_Init();             // PID
@@ -137,6 +140,7 @@ int main(void)
 	  OLED_SetPixel(x, 16, 1);
   }
   OLED_Update();
+  BUZZER_Beep(200);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -153,10 +157,23 @@ int main(void)
 
 	  PID_Print();        // PID: angle, output, left/right motor speeds to Tera Term
 	  //LED_Update();
+	  BUZZER_Update();
 	  if(KEY1_IsPressed()){
 		  ESC_Arm();
 	  }
 	  ESC_Update();  // PID: finishes the ESC arming sequence
+
+	  /* warning: short beep every second while counting down */
+	  if(ESC_IsCountingDown() && HAL_GetTick() - arm_beep_ms >= 1000){
+		  arm_beep_ms = HAL_GetTick();
+		  BUZZER_Beep(100);
+	  }
+	  /* long beep once, the moment the motors are allowed to spin */
+	  if(ESC_IsArmed() && armed_beeped == 0){
+		  armed_beeped = 1;
+		  BUZZER_Beep(1000);
+	  }
+
 	  /* OLED: redraw angle, target and error 5 times a second */
 	  if(HAL_GetTick() - oled_last_ms >= 200){
 		  oled_last_ms = HAL_GetTick();
