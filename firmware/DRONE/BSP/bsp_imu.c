@@ -35,6 +35,10 @@ extern I2C_HandleTypeDef hi2c2;
 #define FILTER_TAU_S	0.5f	/* faster than 0.5 s trust the gyro, slower the accel */
 #define PRINT_PERIOD_MS	100
 
+#define PITCH_OFFSET_DEG  (-5.0f)   /* IMU reading when the arm is truly level */
+
+
+
 static IMU_Data_t imu_data;
 static uint8_t imu_found = 0;
 static uint32_t last_print_ms = 0;
@@ -62,7 +66,7 @@ static uint8_t IMU_ReadRaw(float acc[3], float gyro[3]){
 /*roll and pitch from gravity alone, valid while the rig is not accelerating*/
 static void IMU_AccAngles(const float acc[3], float *roll, float *pitch){
 	*roll  = atan2f(acc[1], acc[2]) * RAD_TO_DEG;
-	*pitch = atan2f(-acc[0], sqrtf(acc[1] * acc[1] + acc[2] * acc[2])) * RAD_TO_DEG;
+	*pitch = atan2f(-acc[0], sqrtf(acc[1]*acc[1] + acc[2]*acc[2])) * RAD_TO_DEG - PITCH_OFFSET_DEG;
 }
 
 /*frees the bus if a reset cut the IMU off in the middle of a read:
