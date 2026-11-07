@@ -12,26 +12,26 @@
 #include "bsp_esc.h"
 #include <stdio.h>
 
-/* PD controller for the props-off demo: KI stays 0.
-   KP 10: a 20 deg tilt already gives the full correction, so the
-   difference between the two sides is easy to see and hear */
-#define KP				10.0f	/* us per deg of error           */
+/* PD controller, props on: KI stays 0.
+   Gentle starting gains (props-off demo used KP 10, KD 0.8):
+   raise step by step while tuning */
+#define KP				6.0f	/* us per deg of error           */
 #define KI				0.0f	/* us per deg*s of error (0 = PD) */
-#define KD				0.8f	/* us per deg/s of rotation rate */
+#define KD				0.5f	/* us per deg/s of rotation rate */
 
 #define DT_S			0.002f	/* PID_Update runs from TIM6 at 500 Hz       */
 #define BASE_US			1200	/* throttle both sides get before correction */
-#define OUT_LIMIT		200.0f	/* largest correction [us]                   */
+#define OUT_LIMIT		100.0f	/* largest correction [us]                   */
 #define I_LIMIT			100.0f	/* largest integral part [us]                */
-#define MAX_US			1400	/* ceiling for any motor while tuning        */
-#define MIN_US			1000	/* slow side stops fully at about 20 deg tilt (1000 = stop) */
+#define MAX_US			1300	/* ceiling for any motor while tuning        */
+#define MIN_US			1100	/* slow side keeps idling, never stops (all motors start at 1100) */
 #define CUTOFF_DEG		60.0f	/* motors stop beyond this angle             */
 
 /* motor test: 1 = spin the motors one at a time in order 1, 2, 3, 4
    (2 s each, 1 s pause, repeating) instead of running the controller.
    Use it to see which physical motor has which number, then set it to 0 */
 #define MOTOR_ID_TEST	0
-#define ID_TEST_US		1250	/* speed of the motor under test */
+#define ID_TEST_US		1100	/* speed of the motor under test */
 
 /* motors on each side of the pitch shaft, numbered as in ESC_Set().
    Found with MOTOR_ID_TEST, looking along the pitch shaft at the board:
