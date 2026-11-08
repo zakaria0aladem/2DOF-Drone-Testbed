@@ -29,6 +29,7 @@
 #include "bsp_oled.h"
 #include "bsp_key.h"
 #include "bsp_buzzer.h"
+#include "bsp_comm.h"     // Raspberry Pi link
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -131,6 +132,7 @@ int main(void)
   ENC_Init();
   IMU_Init();             // IMU
   PID_Init();             // PID
+  COMM_Init();            // Raspberry Pi link on USART3
   HAL_TIM_Base_Start_IT(&htim6);   // PID: start the 500 Hz control loop
   /*0.5s on and 0.5s off*/
   LED_Blink(1000);
@@ -156,6 +158,7 @@ int main(void)
 
 
 	  PID_Print();        // PID: angle, output, left/right motor speeds to Tera Term
+	  COMM_Update();      // Pi link: read $SET commands, send $TEL telemetry
 	  //LED_Update();
 	  BUZZER_Update();
 	  if(KEY1_IsPressed()){

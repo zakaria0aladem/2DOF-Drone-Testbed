@@ -1,0 +1,198 @@
+mkdir -p ~/drone && cd ~/drone
+cat > protocol.py <<'EOF'
+"""Message format shared with the board (same as bsp_comm.h).
+
+Every message is one text line:  $<fields>*<checksum>\\r\\n
+checksum = XOR of all characters between '$' and '*', as 2 hex digits.
+
+Board -> Pi (50 Hz):
+  $TEL,ms,pitch,enc_pitch,enc_yaw,target,output,left_us,right_us,armed,link_lost,bad*CS
+Pi -> board (10 Hz, also the heartbeat):
+  $SET,<target deg>*CS
+"""
+
+TEL_FIELDS = ["ms", "pitch", "enc_pitch", "enc_yaw", "target", "output",
+              "left_us", "right_us", "armed", "link_lost", "bad"]
+
+
+def checksum(text):
+    """XOR of every character of text."""
+    total = 0
+    for ch in text:
+        total ^= ord(ch)
+    return total
+
+
+def build_set(target_deg):
+    """Command line telling the board a new target angle."""
+    body = "SET,%.1f" % target_deg
+    return "$%s*%02X\r\n" % (body, checksum(body))
+
+
+def parse_tel(line):
+    """Turns one $TEL line into a dict, or returns None if it is not valid.
+    Lines that don't start with '$' (the board's normal printout) are skipped."""
+    line = line.strip()
+    if not line.startswith("$") or "*" not in line:
+        return None
+    body, _, sent = line[1:].partition("*")
+    try:
+        if int(sent, 16) != checksum(body):
+            return None
+    except ValueError:
+        return None
+
+    parts = body.split(",")
+    if parts[0] != "TEL" or len(parts) != len(TEL_FIELDS) + 1:
+        return None
+    try:
+        values = [float(p) for p in parts[1:]]
+    except ValueError:
+        return None
+    tel = dict(zip(TEL_FIELDS, values))
+    for key in ("ms", "left_us", "right_us", "armed", "link_lost", "bad"):
+        tel[key] = int(tel[key])
+    return tel
+EOF
+cat > link.py <<'EOF'
+"""Serial link to the Hiwonder (STM32) board over its UART2 USB-C port."""
+
+import glob
+import threading
+import time
+
+import serial
+
+import protocol
+
+BAUD = 115200
+SEND_PERIOD_S = 0.1     # 10 Hz commands, also the board's heartbeat
+
+
+def find_port():
+    """The board shows up on the Pi as /dev/ttyACM0 (or ttyUSB0 on some cables)."""
+    ports = sorted(glob.glob("/dev/ttyACM*")) + sorted(glob.glob("/dev/ttyUSB*"))
+    if not ports:
+        raise RuntimeError("Board not found: is the USB cable in the board's middle (UART2) port?")
+    return ports[0]
+
+
+class BoardLink:
+    """Reads telemetry and keeps sending the target in two background threads."""
+
+    def __init__(self, port=None):
+        self.port = port or find_port()
+        self.ser = serial.Serial(self.port, BAUD, timeout=0.1)
+        self.target = 0.0
+        self.sending = True         # False = stop sending, to test link loss
+        self.latest = None          # newest valid telemetry (dict)
+        self.rx_good = 0            # valid $TEL lines received
+        self.rx_bad = 0             # $ lines with a wrong checksum or format
+        self.tx_count = 0
+        self.listeners = []         # functions called with every telemetry dict
+        self._running = True
+        threading.Thread(target=self._read_loop, daemon=True).start()
+        threading.Thread(target=self._send_loop, daemon=True).start()
+
+    def set_target(self, target_deg):
+        self.target = float(target_deg)
+
+    def _read_loop(self):
+        while self._running:
+            raw = self.ser.readline()
+            if not raw:
+                continue
+            text = raw.decode("ascii", errors="replace")
+            if not text.startswith("$"):
+                continue                # the board's normal printout, not for us
+            tel = protocol.parse_tel(text)
+            if tel is None:
+                self.rx_bad += 1
+                continue
+            tel["pi_time"] = time.time()
+            self.latest = tel
+            self.rx_good += 1
+            for listener in self.listeners:
+                listener(tel)
+
+    def _send_loop(self):
+        while self._running:
+            if self.sending:
+                self.ser.write(protocol.build_set(self.target).encode("ascii"))
+                self.tx_count += 1
+            time.sleep(SEND_PERIOD_S)
+
+    def close(self):
+        self._running = False
+        time.sleep(0.2)
+        self.ser.close()
+EOF
+cat > console.py <<'EOF'
+"""Milestone 3 console: live board data + typing a target angle.
+
+Run:  python3 console.py
+Type a number and press Enter to set the target angle (the board limits it to +/-20).
+  stop  = stop sending (tests link loss: the board returns to level)
+  go    = start sending again
+  q     = quit
+"""
+
+import threading
+import time
+
+from link import BoardLink
+
+PRINT_PERIOD_S = 1.0
+
+
+def show(link):
+    tel = link.latest
+    if tel is None:
+        print("waiting for $TEL from the board...")
+        return
+    print("pitch %6.1f  enc %6.1f  yaw %6.1f | target %5.1f  output %6.1f | "
+          "L %4d  R %4d | armed %d  link %s | Pi sends %s | bad: board %d, Pi %d"
+          % (tel["pitch"], tel["enc_pitch"], tel["enc_yaw"], tel["target"],
+             tel["output"], tel["left_us"], tel["right_us"], tel["armed"],
+             "LOST" if tel["link_lost"] else "ok",
+             "%.1f" % link.target if link.sending else "nothing",
+             tel["bad"], link.rx_bad))
+
+
+def print_loop(link):
+    while True:
+        show(link)
+        time.sleep(PRINT_PERIOD_S)
+
+
+def main():
+    link = BoardLink()
+    print("Connected to the board on %s. Type a target angle and press Enter." % link.port)
+    threading.Thread(target=print_loop, args=(link,), daemon=True).start()
+
+    try:
+        while True:
+            cmd = input().strip().lower()
+            if cmd in ("q", "quit"):
+                break
+            elif cmd == "stop":
+                link.sending = False
+                print(">> stopped sending (the board should go LOST in 0.5 s)")
+            elif cmd == "go":
+                link.sending = True
+                print(">> sending again")
+            elif cmd:
+                try:
+                    link.set_target(float(cmd))
+                    print(">> target %.1f sent" % link.target)
+                except ValueError:
+                    print(">> type a number, stop, go or q")
+    except KeyboardInterrupt:
+        pass
+    link.close()
+
+
+if __name__ == "__main__":
+    main()
+EOF
+ls ~/drone

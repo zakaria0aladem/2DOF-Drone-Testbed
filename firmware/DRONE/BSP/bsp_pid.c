@@ -148,6 +148,19 @@ float PID_GetTarget(void){
 	return target;
 }
 
+/* for the Pi telemetry (bsp_comm) */
+float PID_GetOutput(void){
+	return output;
+}
+
+float PID_GetLeft(void){
+	return left_us;
+}
+
+float PID_GetRight(void){
+	return right_us;
+}
+
 /*one control step, called from the TIM6 interrupt every 2 ms*/
 void PID_Update(void){
 	const IMU_Data_t *imu = IMU_GetData();

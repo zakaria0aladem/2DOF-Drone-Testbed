@@ -15,6 +15,9 @@ void PID_Update(void);
 void PID_SetTarget(float target_deg);
 void PID_Print(void);
 float PID_GetTarget(void);
+float PID_GetOutput(void);
+float PID_GetLeft(void);
+float PID_GetRight(void);
 
 
 
