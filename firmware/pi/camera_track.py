@@ -26,7 +26,7 @@ DEADBAND = 0.10         # ignore small movements near the middle of the image
 SMOOTH = 0.15           # 0..1, smaller = smoother but slower target changes
 LOST_TIME = 0.5         # s without the object -> target goes back to 0
 MIN_AREA = 400          # pixels, smaller blobs are ignored as noise
-ROTATE_180 = False      # set True if the picture is upside down
+ROTATE_180 = True       # set True if the picture is upside down
 
 # starting colour range (HSV). Tune with the sliders, then copy the numbers here.
 # OpenCV hue is 0-179: red ~0-10/170-179, orange ~10-25, yellow ~25-35,
