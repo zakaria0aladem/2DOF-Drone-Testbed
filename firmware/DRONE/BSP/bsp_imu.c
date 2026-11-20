@@ -37,13 +37,24 @@ extern I2C_HandleTypeDef hi2c2;
 
 #define PITCH_OFFSET_DEG  (-5.0f)   /* IMU reading when the arm is truly level */
 
+/* sensor fault: the PID stops and disarms the motors while IMU_IsFault() is 1 */
+#define READ_TIMEOUT_MS	2		/* a failed read gives up fast, so the 2 ms loop keeps running */
+#define FAIL_LIMIT		10		/* this many failed reads in a row (20 ms) = sensor fault      */
 
+/* fault test: 1 = treat every read as failed between FAULT_TEST_START_MS and
+   FAULT_TEST_END_MS after power-up, to check the motors stop. Keep it 0 normally */
+#define IMU_FAULT_TEST		0
+#define FAULT_TEST_START_MS	30000
+#define FAULT_TEST_END_MS	35000
 
 static IMU_Data_t imu_data;
 static uint8_t imu_found = 0;
 static uint32_t last_print_ms = 0;
 static uint32_t last_cycles = 0;
 static float gyro_bias[3];
+static uint8_t fail_count = 0;				/* failed reads in a row               */
+static volatile uint8_t imu_fault = 0;		/* 1 = no valid data, motors must stop */
+static volatile uint8_t clear_requested = 0;	/* K1 asked to clear the fault         */
 
 static void IMU_WriteReg(uint8_t reg, uint8_t value){
 	HAL_I2C_Mem_Write(&hi2c2, IMU_ADDR, reg, I2C_MEMADD_SIZE_8BIT, &value, 1, 50);
@@ -53,7 +64,11 @@ static void IMU_WriteReg(uint8_t reg, uint8_t value){
 static uint8_t IMU_ReadRaw(float acc[3], float gyro[3]){
 	uint8_t b[12];
 
-	if(HAL_I2C_Mem_Read(&hi2c2, IMU_ADDR, REG_AX_L, I2C_MEMADD_SIZE_8BIT, b, 12, 50) != HAL_OK){
+	/* bus stuck busy: give up at once (HAL would otherwise wait 25 ms inside the loop) */
+	if(__HAL_I2C_GET_FLAG(&hi2c2, I2C_FLAG_BUSY)){
+		return 0;
+	}
+	if(HAL_I2C_Mem_Read(&hi2c2, IMU_ADDR, REG_AX_L, I2C_MEMADD_SIZE_8BIT, b, 12, READ_TIMEOUT_MS) != HAL_OK){
 		return 0;
 	}
 	for(uint8_t i = 0; i < 3; i++){
@@ -174,11 +189,36 @@ void IMU_Update(void){
 	float acc_roll, acc_pitch, dt, k;
 	uint32_t now;
 
+	uint8_t ok;
+
 	if(imu_found == 0){
 		return;
 	}
-	if(IMU_ReadRaw(acc, gyro) == 0){
+	ok = IMU_ReadRaw(acc, gyro);
+#if IMU_FAULT_TEST
+	if(HAL_GetTick() >= FAULT_TEST_START_MS && HAL_GetTick() < FAULT_TEST_END_MS){
+		ok = 0;		/* pretend the IMU stopped answering */
+	}
+#endif
+	/* no data: keep the old angle, and after FAIL_LIMIT reads in a row report a fault */
+	if(ok == 0){
+		if(fail_count < FAIL_LIMIT){
+			fail_count++;
+		}
+		if(fail_count >= FAIL_LIMIT){
+			imu_fault = 1;
+		}
 		return;
+	}
+	fail_count = 0;
+
+	/* K1 pressed after a fault: clear it now that a read worked, and restart the
+	   filter from the accelerometer so the old (frozen) angle is thrown away */
+	if(clear_requested){
+		clear_requested = 0;
+		imu_fault = 0;
+		IMU_AccAngles(acc, &imu_data.roll, &imu_data.pitch);
+		last_cycles = DWT->CYCCNT;
 	}
 
 	now = DWT->CYCCNT;
@@ -198,10 +238,31 @@ void IMU_Update(void){
 	k = FILTER_TAU_S / (FILTER_TAU_S + dt);
 	imu_data.roll  = k * (imu_data.roll  + imu_data.gx * dt) + (1.0f - k) * acc_roll;
 	imu_data.pitch = k * (imu_data.pitch + imu_data.gy * dt) + (1.0f - k) * acc_pitch;
+
+	/* a broken value (NaN / infinity) would slip past every angle check in the PID */
+	if(isfinite(imu_data.pitch) == 0 || isfinite(imu_data.gy) == 0){
+		imu_fault = 1;
+	}
 }
 
 const IMU_Data_t *IMU_GetData(void){
 	return &imu_data;
+}
+
+/* 1 if the IMU was not found at start-up or has stopped giving valid data */
+uint8_t IMU_IsFault(void){
+	if(imu_found == 0 || imu_fault == 1){
+		return 1;
+	}
+	return 0;
+}
+
+/* called when K1 is pressed: the fault is cleared on the next good read,
+   inside IMU_Update (no I2C here, the TIM6 interrupt owns the bus) */
+void IMU_ClearFault(void){
+	if(imu_fault == 1){
+		clear_requested = 1;
+	}
 }
 
 /*prints the latest sample, at most once every PRINT_PERIOD_MS*/

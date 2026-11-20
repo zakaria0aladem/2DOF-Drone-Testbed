@@ -27,6 +27,14 @@ void ESC_Arm(void){
 	}
 }
 
+/* stops all motors and cancels arming; K1 arms again with the normal countdown.
+   Used by the PID after an angle cutoff or an IMU fault */
+void ESC_Disarm(void){
+	arm_state = 0;
+	arm_requested = 0;
+	ESC_StopAll();
+}
+
 void ESC_Init(void){
 	arm_state = 0;
 	arm_requested = 0;

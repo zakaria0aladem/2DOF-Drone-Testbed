@@ -27,7 +27,7 @@
 #include <math.h>
 
 #define TEL_PERIOD_MS		20		/* telemetry rate: 50 Hz                    */
-#define TARGET_LIMIT_DEG	20.0f	/* largest target the Pi may ask for        */
+#define TARGET_LIMIT_DEG	35.0f	/* largest target the Pi may ask for        */
 #define LINK_TIMEOUT_MS		500		/* no valid command this long = link lost   */
 #define RX_BUF_SIZE			128		/* bytes waiting between interrupt and loop */
 #define LINE_MAX			32		/* longest command line accepted            */

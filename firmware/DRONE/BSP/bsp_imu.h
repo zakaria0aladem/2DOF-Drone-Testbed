@@ -20,6 +20,8 @@ uint8_t IMU_Init(void);
 void IMU_Update(void);
 const IMU_Data_t *IMU_GetData(void);
 void IMU_Print(void);
+uint8_t IMU_IsFault(void);
+void IMU_ClearFault(void);
 
 
 

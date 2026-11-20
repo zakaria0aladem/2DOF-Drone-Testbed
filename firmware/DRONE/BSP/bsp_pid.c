@@ -12,18 +12,20 @@
 #include "bsp_esc.h"
 #include <stdio.h>
 
-/* PD controller, props on: KI stays 0.
+/* PID controller, props on.
    Gentle starting gains (props-off demo used KP 10, KD 0.8):
-   raise step by step while tuning */
+   raise step by step while tuning.
+   KI = 0 is the old PD. Test 2: KI 2 (raise to 4 if it settles slowly,
+   lower if it overshoots) to remove the ~6 deg steady-state error */
 #define KP				6.0f	/* us per deg of error           */
-#define KI				0.0f	/* us per deg*s of error (0 = PD) */
-#define KD				0.5f	/* us per deg/s of rotation rate */
+#define KI				2.5f	/* us per deg*s of error (0 = PD) */
+#define KD				0.85f	/* us per deg/s of rotation rate */
 
 #define DT_S			0.002f	/* PID_Update runs from TIM6 at 500 Hz       */
 #define BASE_US			1200	/* throttle both sides get before correction */
-#define OUT_LIMIT		100.0f	/* largest correction [us]                   */
+#define OUT_LIMIT		200.0f	/* largest correction [us]                   */
 #define I_LIMIT			100.0f	/* largest integral part [us]                */
-#define MAX_US			1300	/* ceiling for any motor while tuning        */
+#define MAX_US			1400	/* ceiling for any motor while tuning        */
 #define MIN_US			1100	/* slow side keeps idling, never stops (all motors start at 1100) */
 #define CUTOFF_DEG		60.0f	/* motors stop beyond this angle             */
 
@@ -186,13 +188,28 @@ void PID_Update(void){
 	return;
 #endif
 
-	/* tilted too far: motors stay stopped until the switch is turned off */
+	/* IMU not answering (or never found): the angle is not trustworthy, so stop
+	   and disarm. K1 arms again once the IMU gives valid data */
+	if(IMU_IsFault()){
+		PID_StopMotors();
+		ESC_Disarm();
+		return;
+	}
+
+	/* tilted too far: stop and disarm, K1 clears the cutoff and arms again */
 	if(angle > CUTOFF_DEG || angle < -CUTOFF_DEG){
 		cutoff = 1;
 	}
 	if(cutoff == 1){
 		PID_StopMotors();
+		ESC_Disarm();
 		return;
+	}
+
+	/* the integral only adds up while the motors run, otherwise it would build
+	   up before arming and kick the rig the moment the motors start */
+	if(ESC_IsArmed() == 0){
+		integral = 0.0f;
 	}
 
 	error = target - angle;
@@ -221,9 +238,14 @@ void PID_Print(void){
 	last_count = count;
 	last_print_ms = now;
 
-	printf("target %5.1f  angle %6.1f  output %6.1f | left %4.0f  right %4.0f us | switch %s  %s | loop %lu Hz\r\n",
+	printf("target %5.1f  angle %6.1f  output %6.1f | left %4.0f  right %4.0f us | %s  %s | loop %lu Hz\r\n",
 			target, angle, output, left_us, right_us,
-			switch_on ? "ON " : "OFF",
-			cutoff ? "CUTOFF" : "ok",
+			ESC_IsArmed() ? "ARMED   " : "disarmed",
+			IMU_IsFault() ? "IMU FAULT" : (cutoff ? "CUTOFF" : "ok"),
 			(unsigned long)loop_hz);
+}
+
+/* K1: clears an angle cutoff so the motors can be armed again */
+void PID_ClearCutoff(void){
+	cutoff = 0;
 }

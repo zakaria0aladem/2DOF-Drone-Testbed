@@ -1,3 +1,4 @@
+
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
@@ -161,10 +162,18 @@ int main(void)
 	  COMM_Update();      // Pi link: read $SET commands, send $TEL telemetry
 	  //LED_Update();
 	  BUZZER_Update();
-	  if(KEY1_IsPressed()){
+	  /* K1 arms the motors (6 s countdown). After a cutoff or an IMU fault the
+	     motors are disarmed, and K1 also clears the fault and arms again */
+	  if(KEY1_IsPressed() && ESC_IsArmed() == 0){
+		  PID_ClearCutoff();
+		  IMU_ClearFault();
 		  ESC_Arm();
 	  }
 	  ESC_Update();  // PID: finishes the ESC arming sequence
+	  /* disarmed again: the long "armed" beep plays again on the next arming */
+	  if(ESC_IsArmed() == 0 && ESC_IsCountingDown() == 0){
+		  armed_beeped = 0;
+	  }
 
 	  /* warning: short beep every second while counting down */
 	  if(ESC_IsCountingDown() && HAL_GetTick() - arm_beep_ms >= 1000){

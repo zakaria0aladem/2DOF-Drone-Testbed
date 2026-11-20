@@ -18,6 +18,7 @@ float PID_GetTarget(void);
 float PID_GetOutput(void);
 float PID_GetLeft(void);
 float PID_GetRight(void);
+void PID_ClearCutoff(void);
 
 
 
