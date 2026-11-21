@@ -58,3 +58,11 @@ Then (with `mqtt_bridge.py` running) open `http://<pi-name>.local:1880/dashboard
 python3 fake_board.py                 # prints a port such as /dev/pts/3
 python3 mqtt_bridge.py --port /dev/pts/3 --no-camera
 ```
+
+## Credits (third-party files in `dashboard/vendor/`)
+
+- Layout and styles: [Tabler](https://github.com/tabler/tabler) 1.4.0, MIT licence
+- Font: IBM Plex Sans (via Fontsource 5.1.1), SIL Open Font Licence 1.1
+- Charts: [Chart.js](https://www.chartjs.org/) 4.4.7, MIT licence
+- MQTT in the browser: [MQTT.js](https://github.com/mqttjs/MQTT.js) 5.10.1, MIT licence
+- Node-RED dashboard: [FlowFuse Dashboard 2.0](https://dashboard.flowfuse.com/), Apache 2.0
