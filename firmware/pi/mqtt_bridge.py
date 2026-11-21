@@ -68,7 +68,11 @@ class Bridge:
         self.mqtt.on_connect = self._on_connect
         self.mqtt.on_message = self._on_message
         self.mqtt.will_set("testbed/status", json.dumps({"bridge": "offline"}), retain=True)
-        self.mqtt.connect(args.broker, 1883, keepalive=10)
+        # connect_async: if the broker (on the laptop) is not up yet, keep trying in the
+        # background instead of crashing. The board link keeps running meanwhile.
+        print("MQTT broker: %s:1883 (retrying until it answers)" % args.broker)
+        self.mqtt.reconnect_delay_set(1, 5)
+        self.mqtt.connect_async(args.broker, 1883, keepalive=10)
         self.mqtt.loop_start()
 
         self.link.listeners.append(self._on_tel)
@@ -355,7 +359,7 @@ def make_web_handler(bridge):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", help="serial port (default: find the board)")
-    ap.add_argument("--broker", default="localhost", help="MQTT broker address")
+    ap.add_argument("--broker", default="localhost", help="MQTT broker address (the laptop's IP)")
     ap.add_argument("--http", type=int, default=8080, help="web dashboard port (0 = off)")
     ap.add_argument("--no-camera", action="store_true")
     args = ap.parse_args()

@@ -9,7 +9,7 @@
  {
   "id": "broker",
   "type": "mqtt-broker",
-  "name": "Pi mosquitto",
+  "name": "mosquitto (laptop)",
   "broker": "localhost",
   "port": "1883",
   "clientid": "",
