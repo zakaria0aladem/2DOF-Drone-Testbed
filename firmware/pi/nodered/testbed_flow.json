@@ -1,0 +1,1325 @@
+[
+ {
+  "id": "tb_flow",
+  "type": "tab",
+  "label": "Testbed dashboard",
+  "disabled": false,
+  "info": "2-DOF testbed IoT dashboard (Dashboard 2.0). Needs mqtt_bridge.py running on the Pi."
+ },
+ {
+  "id": "broker",
+  "type": "mqtt-broker",
+  "name": "Pi mosquitto",
+  "broker": "localhost",
+  "port": "1883",
+  "clientid": "",
+  "autoConnect": true,
+  "usetls": false,
+  "protocolVersion": "4",
+  "keepalive": "30",
+  "cleansession": true,
+  "autoUnsubscribe": true,
+  "birthTopic": "",
+  "birthQos": "0",
+  "birthPayload": "",
+  "closeTopic": "",
+  "closeQos": "0",
+  "closePayload": "",
+  "willTopic": "",
+  "willQos": "0",
+  "willPayload": ""
+ },
+ {
+  "id": "ui_base",
+  "type": "ui-base",
+  "name": "Testbed",
+  "path": "/dashboard",
+  "appIcon": "",
+  "includeClientData": true,
+  "acceptsClientConfig": [
+   "ui-notification",
+   "ui-control"
+  ],
+  "showPathInSidebar": false,
+  "headerContent": "page",
+  "navigationStyle": "default",
+  "titleBarStyle": "default",
+  "showReconnectNotification": true,
+  "notificationDisplayTime": 1,
+  "showDisconnectNotification": true
+ },
+ {
+  "id": "ui_theme",
+  "type": "ui-theme",
+  "name": "Testbed theme",
+  "colors": {
+   "surface": "#1d2421",
+   "primary": "#2f9e5b",
+   "bgPage": "#f3f5f4",
+   "groupBg": "#ffffff",
+   "groupOutline": "#dfe4e1"
+  },
+  "sizes": {
+   "density": "default",
+   "pagePadding": "12px",
+   "groupGap": "12px",
+   "groupBorderRadius": "10px",
+   "widgetGap": "10px"
+  }
+ },
+ {
+  "id": "ui_page",
+  "type": "ui-page",
+  "name": "2-DOF Testbed",
+  "ui": "ui_base",
+  "path": "/testbed",
+  "icon": "quadcopter",
+  "layout": "grid",
+  "theme": "ui_theme",
+  "breakpoints": [
+   {
+    "name": "Default",
+    "px": 0,
+    "cols": 3
+   },
+   {
+    "name": "Tablet",
+    "px": 576,
+    "cols": 6
+   },
+   {
+    "name": "Small Desktop",
+    "px": 768,
+    "cols": 9
+   },
+   {
+    "name": "Desktop",
+    "px": 1024,
+    "cols": 12
+   }
+  ],
+  "order": 1,
+  "className": "",
+  "visible": "true",
+  "disabled": "false"
+ },
+ {
+  "id": "g_status",
+  "type": "ui-group",
+  "name": "System status",
+  "page": "ui_page",
+  "width": 12,
+  "height": 1,
+  "order": 1,
+  "showTitle": true,
+  "className": "",
+  "visible": "true",
+  "disabled": "false",
+  "groupType": "default"
+ },
+ {
+  "id": "g_pitch",
+  "type": "ui-group",
+  "name": "Pitch (deg)",
+  "page": "ui_page",
+  "width": 6,
+  "height": 1,
+  "order": 2,
+  "showTitle": true,
+  "className": "",
+  "visible": "true",
+  "disabled": "false",
+  "groupType": "default"
+ },
+ {
+  "id": "g_yaw",
+  "type": "ui-group",
+  "name": "Yaw (deg)",
+  "page": "ui_page",
+  "width": 6,
+  "height": 1,
+  "order": 3,
+  "showTitle": true,
+  "className": "",
+  "visible": "true",
+  "disabled": "false",
+  "groupType": "default"
+ },
+ {
+  "id": "g_cmd",
+  "type": "ui-group",
+  "name": "Commands",
+  "page": "ui_page",
+  "width": 4,
+  "height": 1,
+  "order": 4,
+  "showTitle": true,
+  "className": "",
+  "visible": "true",
+  "disabled": "false",
+  "groupType": "default"
+ },
+ {
+  "id": "g_motor",
+  "type": "ui-group",
+  "name": "Motors (ESC pulse, us)",
+  "page": "ui_page",
+  "width": 8,
+  "height": 1,
+  "order": 5,
+  "showTitle": true,
+  "className": "",
+  "visible": "true",
+  "disabled": "false",
+  "groupType": "default"
+ },
+ {
+  "id": "c_pitch",
+  "type": "ui-chart",
+  "z": "tb_flow",
+  "x": 340,
+  "y": 60,
+  "wires": [],
+  "group": "g_pitch",
+  "name": "",
+  "label": "Pitch: measured (IMU) vs reference",
+  "order": 1,
+  "chartType": "line",
+  "category": "topic",
+  "categoryType": "msg",
+  "xAxisLabel": "",
+  "xAxisProperty": "",
+  "xAxisPropertyType": "timestamp",
+  "xAxisType": "time",
+  "xAxisFormat": "",
+  "xAxisFormatType": "auto",
+  "xmin": "",
+  "xmax": "",
+  "yAxisLabel": "deg",
+  "yAxisProperty": "payload",
+  "yAxisPropertyType": "msg",
+  "ymin": "-25",
+  "ymax": "25",
+  "bins": 10,
+  "action": "append",
+  "stackSeries": false,
+  "pointShape": "false",
+  "pointRadius": 4,
+  "showLegend": true,
+  "removeOlder": "20",
+  "removeOlderUnit": "1",
+  "removeOlderPoints": "",
+  "colors": [
+   "#1f6feb",
+   "#e8731a",
+   "#8a949b",
+   "#2CA02C",
+   "#A347E1",
+   "#D62728",
+   "#FF9896",
+   "#9467BD",
+   "#C5B0D5"
+  ],
+  "textColor": [
+   "#666666"
+  ],
+  "textColorDefault": true,
+  "gridColor": [
+   "#e5e5e5"
+  ],
+  "gridColorDefault": true,
+  "width": 6,
+  "height": 5,
+  "className": "",
+  "interpolation": "linear"
+ },
+ {
+  "id": "c_yaw",
+  "type": "ui-chart",
+  "z": "tb_flow",
+  "x": 580,
+  "y": 120,
+  "wires": [],
+  "group": "g_yaw",
+  "name": "",
+  "label": "Yaw: measured (encoder) vs reference",
+  "order": 1,
+  "chartType": "line",
+  "category": "topic",
+  "categoryType": "msg",
+  "xAxisLabel": "",
+  "xAxisProperty": "",
+  "xAxisPropertyType": "timestamp",
+  "xAxisType": "time",
+  "xAxisFormat": "",
+  "xAxisFormatType": "auto",
+  "xmin": "",
+  "xmax": "",
+  "yAxisLabel": "deg",
+  "yAxisProperty": "payload",
+  "yAxisPropertyType": "msg",
+  "ymin": "",
+  "ymax": "",
+  "bins": 10,
+  "action": "append",
+  "stackSeries": false,
+  "pointShape": "false",
+  "pointRadius": 4,
+  "showLegend": true,
+  "removeOlder": "20",
+  "removeOlderUnit": "1",
+  "removeOlderPoints": "",
+  "colors": [
+   "#1f6feb",
+   "#e8731a",
+   "#8a949b",
+   "#2CA02C",
+   "#A347E1",
+   "#D62728",
+   "#FF9896",
+   "#9467BD",
+   "#C5B0D5"
+  ],
+  "textColor": [
+   "#666666"
+  ],
+  "textColorDefault": true,
+  "gridColor": [
+   "#e5e5e5"
+  ],
+  "gridColorDefault": true,
+  "width": 6,
+  "height": 5,
+  "className": "",
+  "interpolation": "linear"
+ },
+ {
+  "id": "t_pitch",
+  "type": "ui-text",
+  "z": "tb_flow",
+  "x": 820,
+  "y": 180,
+  "wires": [],
+  "group": "g_pitch",
+  "order": 2,
+  "width": 3,
+  "height": 0,
+  "name": "",
+  "label": "Measured pitch (IMU)",
+  "format": "{{msg.payload}}",
+  "layout": "row-spread",
+  "style": false,
+  "font": "",
+  "fontSize": 16,
+  "color": "#1d2421",
+  "wrapText": false,
+  "className": ""
+ },
+ {
+  "id": "t_ptgt",
+  "type": "ui-text",
+  "z": "tb_flow",
+  "x": 100,
+  "y": 240,
+  "wires": [],
+  "group": "g_pitch",
+  "order": 3,
+  "width": 3,
+  "height": 0,
+  "name": "",
+  "label": "Pitch reference",
+  "format": "{{msg.payload}}",
+  "layout": "row-spread",
+  "style": false,
+  "font": "",
+  "fontSize": 16,
+  "color": "#1d2421",
+  "wrapText": false,
+  "className": ""
+ },
+ {
+  "id": "t_pout",
+  "type": "ui-text",
+  "z": "tb_flow",
+  "x": 340,
+  "y": 300,
+  "wires": [],
+  "group": "g_pitch",
+  "order": 4,
+  "width": 3,
+  "height": 0,
+  "name": "",
+  "label": "Pitch controller output (us)",
+  "format": "{{msg.payload}}",
+  "layout": "row-spread",
+  "style": false,
+  "font": "",
+  "fontSize": 16,
+  "color": "#1d2421",
+  "wrapText": false,
+  "className": ""
+ },
+ {
+  "id": "t_encp",
+  "type": "ui-text",
+  "z": "tb_flow",
+  "x": 580,
+  "y": 360,
+  "wires": [],
+  "group": "g_pitch",
+  "order": 5,
+  "width": 3,
+  "height": 0,
+  "name": "",
+  "label": "Measured pitch (encoder)",
+  "format": "{{msg.payload}}",
+  "layout": "row-spread",
+  "style": false,
+  "font": "",
+  "fontSize": 16,
+  "color": "#1d2421",
+  "wrapText": false,
+  "className": ""
+ },
+ {
+  "id": "t_yaw",
+  "type": "ui-text",
+  "z": "tb_flow",
+  "x": 820,
+  "y": 420,
+  "wires": [],
+  "group": "g_yaw",
+  "order": 2,
+  "width": 3,
+  "height": 0,
+  "name": "",
+  "label": "Measured yaw (encoder)",
+  "format": "{{msg.payload}}",
+  "layout": "row-spread",
+  "style": false,
+  "font": "",
+  "fontSize": 16,
+  "color": "#1d2421",
+  "wrapText": false,
+  "className": ""
+ },
+ {
+  "id": "t_ytgt",
+  "type": "ui-text",
+  "z": "tb_flow",
+  "x": 100,
+  "y": 480,
+  "wires": [],
+  "group": "g_yaw",
+  "order": 3,
+  "width": 3,
+  "height": 0,
+  "name": "",
+  "label": "Yaw reference",
+  "format": "{{msg.payload}}",
+  "layout": "row-spread",
+  "style": false,
+  "font": "",
+  "fontSize": 16,
+  "color": "#1d2421",
+  "wrapText": false,
+  "className": ""
+ },
+ {
+  "id": "t_yout",
+  "type": "ui-text",
+  "z": "tb_flow",
+  "x": 340,
+  "y": 540,
+  "wires": [],
+  "group": "g_yaw",
+  "order": 4,
+  "width": 3,
+  "height": 0,
+  "name": "",
+  "label": "Yaw controller output (us)",
+  "format": "{{msg.payload}}",
+  "layout": "row-spread",
+  "style": false,
+  "font": "",
+  "fontSize": 16,
+  "color": "#1d2421",
+  "wrapText": false,
+  "className": ""
+ },
+ {
+  "id": "t_yerr",
+  "type": "ui-text",
+  "z": "tb_flow",
+  "x": 580,
+  "y": 600,
+  "wires": [],
+  "group": "g_yaw",
+  "order": 5,
+  "width": 3,
+  "height": 0,
+  "name": "",
+  "label": "Yaw error",
+  "format": "{{msg.payload}}",
+  "layout": "row-spread",
+  "style": false,
+  "font": "",
+  "fontSize": 16,
+  "color": "#1d2421",
+  "wrapText": false,
+  "className": ""
+ },
+ {
+  "id": "ga_m2",
+  "type": "ui-gauge",
+  "z": "tb_flow",
+  "x": 820,
+  "y": 660,
+  "wires": [],
+  "group": "g_motor",
+  "name": "",
+  "order": 1,
+  "width": 2,
+  "height": 3,
+  "gtype": "gauge-half",
+  "gstyle": "rounded",
+  "title": "M2 top-left",
+  "units": "us",
+  "icon": "",
+  "prefix": "",
+  "suffix": "",
+  "segments": [
+   {
+    "color": "#a3aaa6",
+    "from": 1000
+   },
+   {
+    "color": "#2f9e5b",
+    "from": 1050
+   },
+   {
+    "color": "#d4a017",
+    "from": 1350
+   },
+   {
+    "color": "#d64545",
+    "from": 1450
+   }
+  ],
+  "min": 1000,
+  "max": 1500,
+  "sizeThickness": 16,
+  "sizeGap": 4,
+  "sizeKeyThickness": 8,
+  "styleRounded": true,
+  "styleGlow": false,
+  "className": ""
+ },
+ {
+  "id": "ga_m1",
+  "type": "ui-gauge",
+  "z": "tb_flow",
+  "x": 100,
+  "y": 720,
+  "wires": [],
+  "group": "g_motor",
+  "name": "",
+  "order": 2,
+  "width": 2,
+  "height": 3,
+  "gtype": "gauge-half",
+  "gstyle": "rounded",
+  "title": "M1 top-right",
+  "units": "us",
+  "icon": "",
+  "prefix": "",
+  "suffix": "",
+  "segments": [
+   {
+    "color": "#a3aaa6",
+    "from": 1000
+   },
+   {
+    "color": "#2f9e5b",
+    "from": 1050
+   },
+   {
+    "color": "#d4a017",
+    "from": 1350
+   },
+   {
+    "color": "#d64545",
+    "from": 1450
+   }
+  ],
+  "min": 1000,
+  "max": 1500,
+  "sizeThickness": 16,
+  "sizeGap": 4,
+  "sizeKeyThickness": 8,
+  "styleRounded": true,
+  "styleGlow": false,
+  "className": ""
+ },
+ {
+  "id": "ga_m3",
+  "type": "ui-gauge",
+  "z": "tb_flow",
+  "x": 340,
+  "y": 780,
+  "wires": [],
+  "group": "g_motor",
+  "name": "",
+  "order": 3,
+  "width": 2,
+  "height": 3,
+  "gtype": "gauge-half",
+  "gstyle": "rounded",
+  "title": "M3 bottom-left",
+  "units": "us",
+  "icon": "",
+  "prefix": "",
+  "suffix": "",
+  "segments": [
+   {
+    "color": "#a3aaa6",
+    "from": 1000
+   },
+   {
+    "color": "#2f9e5b",
+    "from": 1050
+   },
+   {
+    "color": "#d4a017",
+    "from": 1350
+   },
+   {
+    "color": "#d64545",
+    "from": 1450
+   }
+  ],
+  "min": 1000,
+  "max": 1500,
+  "sizeThickness": 16,
+  "sizeGap": 4,
+  "sizeKeyThickness": 8,
+  "styleRounded": true,
+  "styleGlow": false,
+  "className": ""
+ },
+ {
+  "id": "ga_m4",
+  "type": "ui-gauge",
+  "z": "tb_flow",
+  "x": 580,
+  "y": 840,
+  "wires": [],
+  "group": "g_motor",
+  "name": "",
+  "order": 4,
+  "width": 2,
+  "height": 3,
+  "gtype": "gauge-half",
+  "gstyle": "rounded",
+  "title": "M4 bottom-right",
+  "units": "us",
+  "icon": "",
+  "prefix": "",
+  "suffix": "",
+  "segments": [
+   {
+    "color": "#a3aaa6",
+    "from": 1000
+   },
+   {
+    "color": "#2f9e5b",
+    "from": 1050
+   },
+   {
+    "color": "#d4a017",
+    "from": 1350
+   },
+   {
+    "color": "#d64545",
+    "from": 1450
+   }
+  ],
+  "min": 1000,
+  "max": 1500,
+  "sizeThickness": 16,
+  "sizeGap": 4,
+  "sizeKeyThickness": 8,
+  "styleRounded": true,
+  "styleGlow": false,
+  "className": ""
+ },
+ {
+  "id": "t_link",
+  "type": "ui-text",
+  "z": "tb_flow",
+  "x": 820,
+  "y": 900,
+  "wires": [],
+  "group": "g_status",
+  "order": 5,
+  "width": 3,
+  "height": 0,
+  "name": "",
+  "label": "Pi -> board link",
+  "format": "{{msg.payload}}",
+  "layout": "row-spread",
+  "style": false,
+  "font": "",
+  "fontSize": 16,
+  "color": "#1d2421",
+  "wrapText": false,
+  "className": ""
+ },
+ {
+  "id": "f_tel",
+  "type": "function",
+  "z": "tb_flow",
+  "x": 100,
+  "y": 960,
+  "wires": [
+   [
+    "c_pitch"
+   ],
+   [
+    "c_yaw"
+   ],
+   [
+    "t_pitch"
+   ],
+   [
+    "t_ptgt"
+   ],
+   [
+    "t_pout"
+   ],
+   [
+    "t_encp"
+   ],
+   [
+    "t_yaw"
+   ],
+   [
+    "t_ytgt"
+   ],
+   [
+    "t_yout"
+   ],
+   [
+    "t_yerr"
+   ],
+   [
+    "ga_m2"
+   ],
+   [
+    "ga_m1"
+   ],
+   [
+    "ga_m3"
+   ],
+   [
+    "ga_m4"
+   ],
+   [
+    "t_link"
+   ]
+  ],
+  "name": "split telemetry (10 Hz)",
+  "func": "// Runs for every telemetry message (50 per second).\n// Charts and texts only need ~10 updates a second, so drop the rest.\nconst now = Date.now();\nif (now - (context.get(\"last\") || 0) < 100) return null;\ncontext.set(\"last\", now);\n\nconst t = msg.payload;          // JSON object from testbed/tel\nconst f = v => (v === undefined) ? \"-\" : Number(v).toFixed(1);\nconst m = k => (t[k] !== undefined) ? t[k] : ((k === \"m2\" || k === \"m3\") ? t.left_us : t.right_us);\nreturn [\n    [ {topic: \"measured (IMU)\", payload: t.pitch},\n      {topic: \"reference\", payload: t.target},\n      {topic: \"measured (encoder)\", payload: t.enc_pitch} ],      // 1 pitch chart\n    [ {topic: \"measured\", payload: t.enc_yaw},\n      {topic: \"reference\", payload: t.yaw_target} ],              // 2 yaw chart\n    {payload: f(t.pitch)}, {payload: f(t.target)},                // 3, 4\n    {payload: f(t.output)}, {payload: f(t.enc_pitch)},            // 5, 6\n    {payload: f(t.enc_yaw)}, {payload: f(t.yaw_target)},          // 7, 8\n    {payload: f(t.yaw_out)},                                      // 9\n    {payload: t.yaw_target === undefined ? \"-\" : f(t.yaw_target - t.enc_yaw)},  // 10\n    {payload: m(\"m2\")}, {payload: m(\"m1\")}, {payload: m(\"m3\")}, {payload: m(\"m4\")},  // 11-14\n    {payload: t.link_lost ? \"LOST (pitch target back to 0)\" : \"ok\"}  // 15\n];",
+  "outputs": 15,
+  "timeout": 0,
+  "noerr": 0,
+  "initialize": "",
+  "finalize": "",
+  "libs": []
+ },
+ {
+  "id": "in_tel",
+  "type": "mqtt in",
+  "z": "tb_flow",
+  "x": 340,
+  "y": 1020,
+  "wires": [
+   [
+    "f_tel"
+   ]
+  ],
+  "name": "testbed/tel",
+  "topic": "testbed/tel",
+  "qos": "0",
+  "datatype": "json",
+  "broker": "broker",
+  "nl": false,
+  "rap": true,
+  "rh": 0,
+  "inputs": 0
+ },
+ {
+  "id": "t_board",
+  "type": "ui-text",
+  "z": "tb_flow",
+  "x": 580,
+  "y": 1080,
+  "wires": [],
+  "group": "g_status",
+  "order": 1,
+  "width": 3,
+  "height": 0,
+  "name": "",
+  "label": "Board",
+  "format": "{{msg.payload}}",
+  "layout": "row-spread",
+  "style": false,
+  "font": "",
+  "fontSize": 16,
+  "color": "#1d2421",
+  "wrapText": false,
+  "className": ""
+ },
+ {
+  "id": "t_state",
+  "type": "ui-text",
+  "z": "tb_flow",
+  "x": 820,
+  "y": 1140,
+  "wires": [],
+  "group": "g_status",
+  "order": 2,
+  "width": 3,
+  "height": 0,
+  "name": "",
+  "label": "Motors",
+  "format": "{{msg.payload}}",
+  "layout": "row-spread",
+  "style": false,
+  "font": "",
+  "fontSize": 16,
+  "color": "#1d2421",
+  "wrapText": false,
+  "className": ""
+ },
+ {
+  "id": "t_mode",
+  "type": "ui-text",
+  "z": "tb_flow",
+  "x": 100,
+  "y": 1200,
+  "wires": [],
+  "group": "g_status",
+  "order": 3,
+  "width": 3,
+  "height": 0,
+  "name": "",
+  "label": "Operating mode",
+  "format": "{{msg.payload}}",
+  "layout": "row-spread",
+  "style": false,
+  "font": "",
+  "fontSize": 16,
+  "color": "#1d2421",
+  "wrapText": false,
+  "className": ""
+ },
+ {
+  "id": "t_log",
+  "type": "ui-text",
+  "z": "tb_flow",
+  "x": 340,
+  "y": 1260,
+  "wires": [],
+  "group": "g_status",
+  "order": 4,
+  "width": 3,
+  "height": 0,
+  "name": "",
+  "label": "Logging",
+  "format": "{{msg.payload}}",
+  "layout": "row-spread",
+  "style": false,
+  "font": "",
+  "fontSize": 16,
+  "color": "#1d2421",
+  "wrapText": false,
+  "className": ""
+ },
+ {
+  "id": "t_event",
+  "type": "ui-text",
+  "z": "tb_flow",
+  "x": 580,
+  "y": 1320,
+  "wires": [],
+  "group": "g_status",
+  "order": 6,
+  "width": 9,
+  "height": 0,
+  "name": "",
+  "label": "Last event",
+  "format": "{{msg.payload}}",
+  "layout": "row-spread",
+  "style": false,
+  "font": "",
+  "fontSize": 16,
+  "color": "#1d2421",
+  "wrapText": false,
+  "className": ""
+ },
+ {
+  "id": "f_status",
+  "type": "function",
+  "z": "tb_flow",
+  "x": 820,
+  "y": 1380,
+  "wires": [
+   [
+    "t_board"
+   ],
+   [
+    "t_state"
+   ],
+   [
+    "t_mode"
+   ],
+   [
+    "t_log"
+   ]
+  ],
+  "name": "split status",
+  "func": "const s = msg.payload;          // JSON object from testbed/status (2 per second)\nif (s.bridge !== \"online\") return [{payload: \"bridge OFFLINE\"}, null, null, null];\nreturn [\n    {payload: s.board_connected ? \"connected\" : \"NOT responding\"},\n    {payload: s.state},\n    {payload: s.mode === \"camera\" ? \"CAMERA TRACKING\" : \"MANUAL\"},\n    {payload: s.logging ? (\"recording \" + s.log_file + \" (\" + s.log_rows + \" rows)\") : \"off\"}\n];",
+  "outputs": 4,
+  "timeout": 0,
+  "noerr": 0,
+  "initialize": "",
+  "finalize": "",
+  "libs": []
+ },
+ {
+  "id": "in_status",
+  "type": "mqtt in",
+  "z": "tb_flow",
+  "x": 100,
+  "y": 1440,
+  "wires": [
+   [
+    "f_status"
+   ]
+  ],
+  "name": "testbed/status",
+  "topic": "testbed/status",
+  "qos": "0",
+  "datatype": "json",
+  "broker": "broker",
+  "nl": false,
+  "rap": true,
+  "rh": 0,
+  "inputs": 0
+ },
+ {
+  "id": "f_event",
+  "type": "function",
+  "z": "tb_flow",
+  "x": 340,
+  "y": 1500,
+  "wires": [
+   [
+    "t_event"
+   ]
+  ],
+  "name": "format event",
+  "func": "const d = new Date(msg.payload.t * 1000);\nmsg.payload = d.toLocaleTimeString() + \"  \" + msg.payload.text;\nreturn msg;",
+  "outputs": 1,
+  "timeout": 0,
+  "noerr": 0,
+  "initialize": "",
+  "finalize": "",
+  "libs": []
+ },
+ {
+  "id": "in_event",
+  "type": "mqtt in",
+  "z": "tb_flow",
+  "x": 580,
+  "y": 1560,
+  "wires": [
+   [
+    "f_event"
+   ]
+  ],
+  "name": "testbed/event",
+  "topic": "testbed/event",
+  "qos": "0",
+  "datatype": "json",
+  "broker": "broker",
+  "nl": false,
+  "rap": true,
+  "rh": 0,
+  "inputs": 0
+ },
+ {
+  "id": "o_pitch",
+  "type": "mqtt out",
+  "z": "tb_flow",
+  "x": 820,
+  "y": 1620,
+  "wires": [],
+  "name": "testbed/cmd/pitch",
+  "topic": "testbed/cmd/pitch",
+  "qos": "0",
+  "retain": "false",
+  "respTopic": "",
+  "contentType": "",
+  "userProps": "",
+  "correl": "",
+  "expiry": "",
+  "broker": "broker"
+ },
+ {
+  "id": "o_yaw",
+  "type": "mqtt out",
+  "z": "tb_flow",
+  "x": 100,
+  "y": 1680,
+  "wires": [],
+  "name": "testbed/cmd/yaw",
+  "topic": "testbed/cmd/yaw",
+  "qos": "0",
+  "retain": "false",
+  "respTopic": "",
+  "contentType": "",
+  "userProps": "",
+  "correl": "",
+  "expiry": "",
+  "broker": "broker"
+ },
+ {
+  "id": "o_mode",
+  "type": "mqtt out",
+  "z": "tb_flow",
+  "x": 340,
+  "y": 1740,
+  "wires": [],
+  "name": "testbed/cmd/mode",
+  "topic": "testbed/cmd/mode",
+  "qos": "0",
+  "retain": "false",
+  "respTopic": "",
+  "contentType": "",
+  "userProps": "",
+  "correl": "",
+  "expiry": "",
+  "broker": "broker"
+ },
+ {
+  "id": "o_log",
+  "type": "mqtt out",
+  "z": "tb_flow",
+  "x": 580,
+  "y": 1800,
+  "wires": [],
+  "name": "testbed/cmd/log",
+  "topic": "testbed/cmd/log",
+  "qos": "0",
+  "retain": "false",
+  "respTopic": "",
+  "contentType": "",
+  "userProps": "",
+  "correl": "",
+  "expiry": "",
+  "broker": "broker"
+ },
+ {
+  "id": "o_dis",
+  "type": "mqtt out",
+  "z": "tb_flow",
+  "x": 820,
+  "y": 1860,
+  "wires": [],
+  "name": "testbed/cmd/disarm",
+  "topic": "testbed/cmd/disarm",
+  "qos": "0",
+  "retain": "false",
+  "respTopic": "",
+  "contentType": "",
+  "userProps": "",
+  "correl": "",
+  "expiry": "",
+  "broker": "broker"
+ },
+ {
+  "id": "s_pitch",
+  "type": "ui-slider",
+  "z": "tb_flow",
+  "x": 100,
+  "y": 1920,
+  "wires": [
+   [
+    "o_pitch"
+   ]
+  ],
+  "group": "g_cmd",
+  "name": "",
+  "label": "Pitch reference (deg)",
+  "tooltip": "",
+  "order": 1,
+  "width": 4,
+  "height": 1,
+  "passthru": false,
+  "outs": "end",
+  "topic": "",
+  "topicType": "str",
+  "thumbLabel": true,
+  "showTicks": "always",
+  "min": -20,
+  "max": 20,
+  "step": 1,
+  "className": "",
+  "iconPrepend": "",
+  "iconAppend": "",
+  "color": "",
+  "colorTrack": "",
+  "colorThumb": "",
+  "showTextField": false
+ },
+ {
+  "id": "n_yaw",
+  "type": "ui-number-input",
+  "z": "tb_flow",
+  "x": 340,
+  "y": 1980,
+  "wires": [
+   [
+    "o_yaw"
+   ]
+  ],
+  "group": "g_cmd",
+  "name": "",
+  "label": "Yaw reference (deg, Enter to send)",
+  "order": 2,
+  "width": 4,
+  "height": 1,
+  "topic": "",
+  "topicType": "str",
+  "min": -150,
+  "max": 150,
+  "step": 5,
+  "tooltip": "",
+  "passthru": false,
+  "sendOnBlur": false,
+  "sendOnEnter": true,
+  "className": "",
+  "clearable": false,
+  "icon": "",
+  "iconPosition": "left",
+  "iconInnerPosition": "inside",
+  "spinner": "default"
+ },
+ {
+  "id": "bg_yaw",
+  "type": "ui-button-group",
+  "z": "tb_flow",
+  "x": 580,
+  "y": 2040,
+  "wires": [
+   [
+    "o_yaw"
+   ]
+  ],
+  "group": "g_cmd",
+  "name": "",
+  "order": 3,
+  "width": 4,
+  "height": 1,
+  "label": "Yaw presets",
+  "className": "",
+  "rounded": true,
+  "useThemeColors": true,
+  "passthru": false,
+  "options": [
+   {
+    "label": "-90",
+    "icon": "",
+    "value": "-90",
+    "valueType": "str",
+    "color": "#2f9e5b"
+   },
+   {
+    "label": "-45",
+    "icon": "",
+    "value": "-45",
+    "valueType": "str",
+    "color": "#2f9e5b"
+   },
+   {
+    "label": "0",
+    "icon": "",
+    "value": "0",
+    "valueType": "str",
+    "color": "#2f9e5b"
+   },
+   {
+    "label": "+45",
+    "icon": "",
+    "value": "45",
+    "valueType": "str",
+    "color": "#2f9e5b"
+   },
+   {
+    "label": "+90",
+    "icon": "",
+    "value": "90",
+    "valueType": "str",
+    "color": "#2f9e5b"
+   }
+  ],
+  "topic": "",
+  "topicType": "str"
+ },
+ {
+  "id": "bg_mode",
+  "type": "ui-button-group",
+  "z": "tb_flow",
+  "x": 820,
+  "y": 2100,
+  "wires": [
+   [
+    "o_mode"
+   ]
+  ],
+  "group": "g_cmd",
+  "name": "",
+  "order": 4,
+  "width": 4,
+  "height": 1,
+  "label": "Operating mode",
+  "className": "",
+  "rounded": true,
+  "useThemeColors": true,
+  "passthru": false,
+  "options": [
+   {
+    "label": "Manual",
+    "icon": "",
+    "value": "manual",
+    "valueType": "str",
+    "color": "#2f9e5b"
+   },
+   {
+    "label": "Camera tracking",
+    "icon": "",
+    "value": "camera",
+    "valueType": "str",
+    "color": "#2f9e5b"
+   }
+  ],
+  "topic": "",
+  "topicType": "str"
+ },
+ {
+  "id": "bg_log",
+  "type": "ui-button-group",
+  "z": "tb_flow",
+  "x": 100,
+  "y": 2160,
+  "wires": [
+   [
+    "o_log"
+   ]
+  ],
+  "group": "g_cmd",
+  "name": "",
+  "order": 5,
+  "width": 4,
+  "height": 1,
+  "label": "Data logging",
+  "className": "",
+  "rounded": true,
+  "useThemeColors": true,
+  "passthru": false,
+  "options": [
+   {
+    "label": "Start log",
+    "icon": "",
+    "value": "start",
+    "valueType": "str",
+    "color": "#2f9e5b"
+   },
+   {
+    "label": "Stop log",
+    "icon": "",
+    "value": "stop",
+    "valueType": "str",
+    "color": "#2f9e5b"
+   }
+  ],
+  "topic": "",
+  "topicType": "str"
+ },
+ {
+  "id": "b_dis",
+  "type": "ui-button",
+  "z": "tb_flow",
+  "x": 340,
+  "y": 2220,
+  "wires": [
+   [
+    "o_dis"
+   ]
+  ],
+  "group": "g_cmd",
+  "name": "",
+  "label": "DISARM MOTORS",
+  "order": 6,
+  "width": 4,
+  "height": 1,
+  "emulateClick": false,
+  "tooltip": "Arming is only possible with K1 on the board",
+  "color": "#ffffff",
+  "bgcolor": "#d64545",
+  "className": "",
+  "icon": "alert-octagon",
+  "iconPosition": "left",
+  "payload": "1",
+  "payloadType": "str",
+  "topic": "",
+  "topicType": "str",
+  "buttonColor": "#d64545",
+  "textColor": "#ffffff",
+  "iconColor": "#ffffff",
+  "enableClick": true,
+  "enablePointerdown": false,
+  "pointerdownPayload": "",
+  "pointerdownPayloadType": "str",
+  "enablePointerup": false,
+  "pointerupPayload": "",
+  "pointerupPayloadType": "str"
+ },
+ {
+  "id": "inj_init",
+  "type": "inject",
+  "z": "tb_flow",
+  "name": "start slider at 0",
+  "props": [
+   {
+    "p": "payload"
+   }
+  ],
+  "repeat": "",
+  "crontab": "",
+  "once": true,
+  "onceDelay": "1",
+  "topic": "",
+  "payload": "0",
+  "payloadType": "num",
+  "x": 120,
+  "y": 1400,
+  "wires": [
+   [
+    "s_pitch"
+   ]
+  ]
+ }
+]

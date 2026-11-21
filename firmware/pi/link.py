@@ -26,7 +26,9 @@ class BoardLink:
     def __init__(self, port=None):
         self.port = port or find_port()
         self.ser = serial.Serial(self.port, BAUD, timeout=0.1)
-        self.target = 0.0
+        self.target = 0.0           # pitch target (deg), sent every period
+        self.yaw_target = None      # None = don't send $YAW (board keeps its own)
+        self._disarm_left = 0       # $DIS lines still to send
         self.sending = True         # False = stop sending, to test link loss
         self.latest = None          # newest valid telemetry (dict)
         self.rx_good = 0            # valid $TEL lines received
@@ -39,6 +41,13 @@ class BoardLink:
 
     def set_target(self, target_deg):
         self.target = float(target_deg)
+
+    def set_yaw(self, target_deg):
+        self.yaw_target = float(target_deg)
+
+    def disarm(self):
+        """Sends $DIS three times (in case one line is lost)."""
+        self._disarm_left = 3
 
     def _read_loop(self):
         while self._running:
@@ -60,8 +69,14 @@ class BoardLink:
 
     def _send_loop(self):
         while self._running:
+            if self._disarm_left > 0:       # disarm goes out even when "stopped"
+                self.ser.write(protocol.build_disarm().encode("ascii"))
+                self._disarm_left -= 1
             if self.sending:
-                self.ser.write(protocol.build_set(self.target).encode("ascii"))
+                out = protocol.build_set(self.target)
+                if self.yaw_target is not None:
+                    out += protocol.build_yaw(self.yaw_target)
+                self.ser.write(out.encode("ascii"))
                 self.tx_count += 1
             time.sleep(SEND_PERIOD_S)
 

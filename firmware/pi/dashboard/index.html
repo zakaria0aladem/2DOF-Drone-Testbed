@@ -1,0 +1,357 @@
+<!doctype html>
+<!--
+  2-DOF testbed IoT dashboard.
+  Served by mqtt_bridge.py (http://<pi>:8080). It is an MQTT client itself:
+  it connects to the mosquitto broker on the Pi over websockets (port 9001),
+  subscribes to testbed/tel, testbed/status, testbed/event and publishes
+  testbed/cmd/... when you press a button. Topics are listed in mqtt_bridge.py.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Testbed Dashboard</title>
+<script src="mqtt.min.js"></script>
+<style>
+  :root {
+    --bg: #f3f5f4; --card: #ffffff; --ink: #1d2421; --muted: #66706b; --line: #dfe4e1;
+    --meas: #1f6feb; --enc: #8a949b; --ref: #e8731a; --out: #2f9e5b;
+    --ok: #2f9e5b; --warn: #d4a017; --bad: #d64545; --off: #a3aaa6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121614; --card: #1b201e; --ink: #e6ebe8; --muted: #93a09a; --line: #2c3430;
+      --meas: #5b9bff; --enc: #6f7a80; --ref: #ff9a4d; --out: #4cc27f;
+    }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
+           padding: 14px 20px; background: var(--card); border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 18px; margin: 0 12px 0 0; font-weight: 650; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+          border-radius: 999px; border: 1px solid var(--line); font-size: 12.5px; white-space: nowrap; }
+  .chip b { font-weight: 650; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--off); }
+  .dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); }
+  .dot.bad { background: var(--bad); } .dot.rec { background: var(--bad); animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: .25; } }
+  main { display: grid; gap: 16px; padding: 16px 20px 28px; grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+         max-width: 1500px; margin: 0 auto; align-items: start; }
+  .col { display: grid; gap: 16px; min-width: 0; }
+  .pair { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 900px) { main { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 640px) { .pair { grid-template-columns: 1fr; } .nums { grid-template-columns: 1fr 1fr !important; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+             margin: 0 0 10px; font-weight: 650; }
+  @media (max-width: 760px) { main { padding: 12px 16px; } }
+  .nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 8px; }
+  .num { border-left: 3px solid var(--line); padding: 2px 8px; }
+  .num .k { font-size: 11.5px; color: var(--muted); }
+  .num .v { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .num.meas { border-color: var(--meas); } .num.enc { border-color: var(--enc); }
+  .num.ref { border-color: var(--ref); } .num.out { border-color: var(--out); }
+  canvas { width: 100%; height: 190px; display: block; }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-top: 6px; flex-wrap: wrap; }
+  .legend i { display: inline-block; width: 18px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 5px; }
+  .motors { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .motor { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .motor .row { font-size: 12px; color: var(--muted); }
+  .motor .us { display: block; font-size: 18px; font-weight: 650; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .bar { height: 8px; border-radius: 4px; background: var(--line); margin-top: 6px; overflow: hidden; }
+  .bar div { height: 100%; width: 0; background: var(--out); transition: width .1s; }
+  .ctl { margin-bottom: 14px; }
+  .ctl label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 4px; }
+  .ctl .line { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  input[type=range] { flex: 1; min-width: 140px; accent-color: var(--ref); }
+  input[type=number] { width: 80px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px;
+                       background: var(--bg); color: var(--ink); font: inherit; }
+  button { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg);
+           color: var(--ink); font: inherit; cursor: pointer; }
+  button:hover { border-color: var(--muted); }
+  button.primary { background: var(--ref); border-color: var(--ref); color: #fff; font-weight: 600; }
+  button.sel { background: var(--ink); color: var(--card); border-color: var(--ink); }
+  button.danger { width: 100%; padding: 12px; background: var(--bad); border-color: var(--bad);
+                  color: #fff; font-weight: 700; letter-spacing: .05em; font-size: 15px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .cam { width: 100%; aspect-ratio: 4/3; background: #000; border-radius: 8px; object-fit: contain; display: block; }
+  .nocam { aspect-ratio: 4/3; display: grid; place-items: center; color: var(--muted);
+           border: 1px dashed var(--line); border-radius: 8px; }
+  .events { list-style: none; margin: 0; padding: 0; max-height: 240px; overflow-y: auto;
+            font: 12.5px/1.5 ui-monospace, Consolas, monospace; }
+  .events li { padding: 3px 0; border-bottom: 1px solid var(--line); }
+  .events time { color: var(--muted); margin-right: 8px; }
+  .stats { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: 13px; }
+  .stats span:nth-child(odd) { color: var(--muted); }
+  .stats span:nth-child(even) { font-variant-numeric: tabular-nums; text-align: right; }
+  a { color: var(--meas); }
+</style>
+</head>
+<body>
+<header>
+  <h1>2-DOF Testbed</h1>
+  <div class="chips">
+    <span class="chip"><span class="dot" id="d-mqtt"></span>Dashboard <b id="c-mqtt">connecting</b></span>
+    <span class="chip"><span class="dot" id="d-board"></span>Board <b id="c-board">?</b></span>
+    <span class="chip"><span class="dot" id="d-state"></span>Motors <b id="c-state">?</b></span>
+    <span class="chip"><span class="dot" id="d-link"></span>Pi→board link <b id="c-link">?</b></span>
+    <span class="chip"><span class="dot ok"></span>Mode <b id="c-mode">?</b></span>
+    <span class="chip"><span class="dot" id="d-log"></span>Logging <b id="c-log">off</b></span>
+  </div>
+</header>
+
+<main>
+  <div class="col">
+  <section class="card">
+    <h2>Pitch</h2>
+    <div class="nums">
+      <div class="num meas"><div class="k">Measured (IMU)</div><div class="v" id="n-pitch">–</div></div>
+      <div class="num enc"><div class="k">Measured (encoder)</div><div class="v" id="n-encp">–</div></div>
+      <div class="num ref"><div class="k">Reference</div><div class="v" id="n-ptgt">–</div></div>
+      <div class="num out"><div class="k">Controller output (µs)</div><div class="v" id="n-pout">–</div></div>
+    </div>
+    <canvas id="ch-pitch"></canvas>
+    <div class="legend"><span><i style="border-color:var(--meas)"></i>measured IMU</span>
+      <span><i style="border-color:var(--enc)"></i>measured encoder</span>
+      <span><i style="border-color:var(--ref);border-top-style:dashed"></i>reference</span>
+      <span>last 20 s, degrees</span></div>
+  </section>
+
+  
+
+  <section class="card">
+    <h2>Yaw</h2>
+    <div class="nums">
+      <div class="num meas"><div class="k">Measured (encoder)</div><div class="v" id="n-yaw">–</div></div>
+      <div class="num ref"><div class="k">Reference</div><div class="v" id="n-ytgt">–</div></div>
+      <div class="num out"><div class="k">Controller output (µs)</div><div class="v" id="n-yout">–</div></div>
+      <div class="num"><div class="k">Error</div><div class="v" id="n-yerr">–</div></div>
+    </div>
+    <canvas id="ch-yaw"></canvas>
+    <div class="legend"><span><i style="border-color:var(--meas)"></i>measured</span>
+      <span><i style="border-color:var(--ref);border-top-style:dashed"></i>reference</span>
+      <span>last 20 s, degrees</span></div>
+  </section>
+  <div class="pair">
+  <section class="card">
+    <h2>Camera</h2>
+    <img class="cam" id="cam" alt="camera" hidden>
+    <div class="nocam" id="nocam">no camera</div>
+    <div class="hint" id="cam-info"></div>
+  </section>
+  <section class="card">
+    <h2>Events</h2>
+    <ul class="events" id="events"></ul>
+  </section>
+  </div>
+</div>
+<div class="col">
+  <section class="card">
+    <h2>Commands</h2>
+    <div class="ctl">
+      <label>Pitch reference (deg, ±20)</label>
+      <div class="line">
+        <input type="range" id="pitch-r" min="-20" max="20" step="0.5" value="0">
+        <input type="number" id="pitch-n" min="-20" max="20" step="0.5" value="0">
+        <button class="primary" id="pitch-send">Send</button>
+      </div>
+      <div class="line" style="margin-top:6px">
+        <button data-pitch="-10">−10</button><button data-pitch="0">0</button><button data-pitch="10">+10</button>
+      </div>
+      <div class="hint" id="pitch-hint"></div>
+    </div>
+    <div class="ctl">
+      <label>Yaw reference (deg, ±150)</label>
+      <div class="line">
+        <input type="number" id="yaw-n" min="-150" max="150" step="5" value="0">
+        <button class="primary" id="yaw-send">Send</button>
+        <button data-yaw="-90">−90</button><button data-yaw="-45">−45</button><button data-yaw="0">0</button>
+        <button data-yaw="45">+45</button><button data-yaw="90">+90</button>
+      </div>
+    </div>
+    <div class="ctl">
+      <label>Operating mode</label>
+      <div class="seg"><button id="m-manual">Manual</button><button id="m-camera">Camera tracking</button></div>
+      <div class="hint">Camera tracking: the Pi sets the pitch reference from the ball position.</div>
+    </div>
+    <div class="ctl">
+      <label>Data logging (CSV on the Pi)</label>
+      <div class="line"><button id="log-start">Start</button><button id="log-stop">Stop</button>
+        <a href="/logs/" target="_blank">saved logs</a></div>
+    </div>
+    <button class="danger" id="disarm">DISARM MOTORS</button>
+    <div class="hint">Arming is only possible with the K1 key on the board.</div>
+  </section>
+  <section class="card">
+    <h2>Motors (ESC pulse)</h2>
+    <div class="motors">
+      <div class="motor"><div class="row">M2 · top-left<span class="us" id="u-m2">–</span></div><div class="bar"><div id="b-m2"></div></div></div>
+      <div class="motor"><div class="row">M1 · top-right<span class="us" id="u-m1">–</span></div><div class="bar"><div id="b-m1"></div></div></div>
+      <div class="motor"><div class="row">M3 · bottom-left<span class="us" id="u-m3">–</span></div><div class="bar"><div id="b-m3"></div></div></div>
+      <div class="motor"><div class="row">M4 · bottom-right<span class="us" id="u-m4">–</span></div><div class="bar"><div id="b-m4"></div></div></div>
+    </div>
+    <div class="hint">Bars show 1000 µs (stopped) to 1500 µs.</div>
+  </section>
+  <section class="card">
+    <h2>Link statistics</h2>
+    <div class="stats">
+      <span>Telemetry rate</span><span id="s-rate">–</span>
+      <span>Lines received (good / bad)</span><span id="s-rx">–</span>
+      <span>Commands sent by Pi</span><span id="s-tx">–</span>
+      <span>Bad lines seen by board</span><span id="s-bad">–</span>
+      <span>Serial port</span><span id="s-port">–</span>
+      <span>Log file</span><span id="s-log">–</span>
+    </div>
+  </section>
+</div>
+
+  
+
+  
+
+  
+
+  
+</main>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const host = params.get("broker") || location.hostname || "localhost";
+const client = mqtt.connect("ws://" + host + ":9001", { reconnectPeriod: 2000 });
+
+// ---------- connection ----------
+function chip(name, text, cls) { $("c-" + name).textContent = text; const d = $("d-" + name); if (d) d.className = "dot " + (cls || ""); }
+client.on("connect", () => { chip("mqtt", "connected", "ok"); client.subscribe(["testbed/tel", "testbed/status", "testbed/event"]); });
+client.on("close", () => chip("mqtt", "disconnected", "bad"));
+client.on("message", (topic, payload) => {
+  let msg; try { msg = JSON.parse(payload.toString()); } catch (e) { return; }
+  if (topic === "testbed/tel") onTel(msg);
+  else if (topic === "testbed/status") onStatus(msg);
+  else if (topic === "testbed/event") addEvent(msg.t, msg.text);
+});
+function send(cmd, value) { client.publish("testbed/cmd/" + cmd, String(value)); }
+
+// ---------- telemetry ----------
+const WINDOW_S = 20;
+const pitchData = [], yawData = [];
+let telCount = 0, lastTelTime = 0;
+const fmt = (v, d = 1) => (v === undefined || v === null) ? "–" : Number(v).toFixed(d);
+
+function onTel(t) {
+  telCount++; lastTelTime = performance.now();
+  const now = performance.now() / 1000;
+  pitchData.push([now, t.pitch, t.enc_pitch, t.target]);
+  yawData.push([now, t.enc_yaw, t.yaw_target]);
+  while (pitchData.length && pitchData[0][0] < now - WINDOW_S) pitchData.shift();
+  while (yawData.length && yawData[0][0] < now - WINDOW_S) yawData.shift();
+
+  $("n-pitch").textContent = fmt(t.pitch); $("n-encp").textContent = fmt(t.enc_pitch);
+  $("n-ptgt").textContent = fmt(t.target); $("n-pout").textContent = fmt(t.output);
+  $("n-yaw").textContent = fmt(t.enc_yaw); $("n-ytgt").textContent = fmt(t.yaw_target);
+  $("n-yout").textContent = fmt(t.yaw_out);
+  $("n-yerr").textContent = t.yaw_target === undefined ? "–" : fmt(t.yaw_target - t.enc_yaw);
+  for (const m of ["m1", "m2", "m3", "m4"]) {
+    const us = t[m] !== undefined ? t[m] : (m === "m2" || m === "m3" ? t.left_us : t.right_us);
+    $("u-" + m).textContent = us + " µs";
+    $("b-" + m).style.width = Math.max(0, Math.min(100, (us - 1000) / 5)) + "%";
+  }
+  chip("link", t.link_lost ? "LOST" : "ok", t.link_lost ? "bad" : "ok");
+  $("s-bad").textContent = t.bad;
+}
+
+// ---------- status ----------
+const STATE_CLS = { DISARMED: "", ARMING: "warn", ARMED: "ok", "IMU FAULT": "bad" };
+function onStatus(s) {
+  if (s.bridge !== "online") { chip("board", "bridge offline", "bad"); return; }
+  chip("board", s.board_connected ? "connected" : "not responding", s.board_connected ? "ok" : "bad");
+  chip("state", s.state, STATE_CLS[s.state] || "");
+  $("c-mode").textContent = s.mode === "camera" ? "CAMERA TRACKING" : "MANUAL";
+  $("m-manual").className = s.mode === "manual" ? "sel" : "";
+  $("m-camera").className = s.mode === "camera" ? "sel" : "";
+  $("pitch-hint").textContent = s.mode === "camera" ? "Camera mode: the pitch reference comes from the camera." : "";
+  chip("log", s.logging ? "REC " + s.log_rows : "off", s.logging ? "rec" : "");
+  $("s-rx").textContent = s.rx_good + " / " + s.rx_bad;
+  $("s-tx").textContent = s.tx;
+  $("s-port").textContent = s.port;
+  $("s-log").textContent = s.log_file || "–";
+  const cam = s.camera || {};
+  if (cam.available) {
+    if ($("cam").hidden) { $("cam").src = "/camera.mjpg"; $("cam").hidden = false; $("nocam").hidden = true; }
+    $("cam-info").textContent = "ball " + (cam.found ? "found" : "not seen") + " · x " + fmt(cam.cam_x, 2) +
+      " · camera target " + fmt(cam.cam_target) + "° · " + fmt(cam.fps, 0) + " fps";
+  }
+}
+setInterval(() => {
+  $("s-rate").textContent = telCount + " Hz"; telCount = 0;
+  if (performance.now() - lastTelTime > 1000) chip("board", "no telemetry", "bad");
+}, 1000);
+
+// ---------- events ----------
+function addEvent(t, text) {
+  const li = document.createElement("li");
+  const time = document.createElement("time");
+  time.textContent = new Date((t || Date.now() / 1000) * 1000).toLocaleTimeString();
+  li.append(time, text);
+  $("events").prepend(li);
+  while ($("events").children.length > 100) $("events").lastChild.remove();
+}
+
+// ---------- commands ----------
+$("pitch-r").oninput = () => $("pitch-n").value = $("pitch-r").value;
+$("pitch-n").oninput = () => $("pitch-r").value = $("pitch-n").value;
+$("pitch-send").onclick = () => send("pitch", $("pitch-n").value);
+document.querySelectorAll("[data-pitch]").forEach(b => b.onclick = () => {
+  $("pitch-n").value = $("pitch-r").value = b.dataset.pitch; send("pitch", b.dataset.pitch); });
+$("yaw-send").onclick = () => send("yaw", $("yaw-n").value);
+document.querySelectorAll("[data-yaw]").forEach(b => b.onclick = () => { $("yaw-n").value = b.dataset.yaw; send("yaw", b.dataset.yaw); });
+$("m-manual").onclick = () => send("mode", "manual");
+$("m-camera").onclick = () => send("mode", "camera");
+$("log-start").onclick = () => send("log", "start");
+$("log-stop").onclick = () => send("log", "stop");
+$("disarm").onclick = () => send("disarm", 1);
+
+// ---------- charts (plain canvas) ----------
+function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function drawChart(canvas, data, series) {
+  const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
+  if (canvas.width !== w * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
+  const g = canvas.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  const L = 40, R = 8, T = 8, B = 18, now = performance.now() / 1000;
+  let lo = -10, hi = 10;
+  for (const row of data) for (const s of series) { const v = row[s.i]; if (v !== undefined) { lo = Math.min(lo, v); hi = Math.max(hi, v); } }
+  const pad = (hi - lo) * 0.1; lo -= pad; hi += pad;
+  const X = t => L + (t - (now - WINDOW_S)) / WINDOW_S * (w - L - R);
+  const Y = v => T + (hi - v) / (hi - lo) * (h - T - B);
+  g.font = "11px system-ui, sans-serif"; g.fillStyle = css("--muted"); g.strokeStyle = css("--line"); g.lineWidth = 1;
+  const step = niceStep((hi - lo) / 4);
+  for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) {
+    g.beginPath(); g.moveTo(L, Y(v)); g.lineTo(w - R, Y(v)); g.stroke(); g.fillText(v.toFixed(0), 4, Y(v) + 4);
+  }
+  for (let s = 0; s <= WINDOW_S; s += 5) g.fillText(s === WINDOW_S ? "now" : "-" + (WINDOW_S - s) + "s", X(now - WINDOW_S + s) - 12, h - 4);
+  for (const s of series) {
+    g.strokeStyle = css(s.color); g.lineWidth = s.width || 2; g.setLineDash(s.dash || []); g.beginPath();
+    let first = true;
+    for (const row of data) { const v = row[s.i]; if (v === undefined) continue;
+      if (first) { g.moveTo(X(row[0]), Y(v)); first = false; } else g.lineTo(X(row[0]), Y(v)); }
+    g.stroke();
+  }
+  g.setLineDash([]);
+}
+function niceStep(x) { const p = Math.pow(10, Math.floor(Math.log10(x))); const m = x / p; return (m < 2 ? 2 : m < 5 ? 5 : 10) * p; }
+function frame() {
+  drawChart($("ch-pitch"), pitchData, [{ i: 2, color: "--enc", width: 1.5 }, { i: 1, color: "--meas" }, { i: 3, color: "--ref", dash: [6, 4] }]);
+  drawChart($("ch-yaw"), yawData, [{ i: 1, color: "--meas" }, { i: 2, color: "--ref", dash: [6, 4] }]);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
