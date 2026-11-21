@@ -110,3 +110,23 @@ uint8_t ESC_IsCountingDown(void){
 	}
 	return 0;
 }
+
+uint16_t ESC_GetPulse(uint8_t motor){
+	if(motor == 1){
+		return __HAL_TIM_GET_COMPARE(&htim4, TIM_CHANNEL_1);
+	}
+	else if(motor == 2){
+		return __HAL_TIM_GET_COMPARE(&htim4, TIM_CHANNEL_2);
+	}
+	else if(motor == 3){
+		return __HAL_TIM_GET_COMPARE(&htim3, TIM_CHANNEL_1);
+	}
+	else if(motor == 4){
+		return __HAL_TIM_GET_COMPARE(&htim3, TIM_CHANNEL_2);
+	}
+	else{
+		return 0;
+	}
+}
+
+

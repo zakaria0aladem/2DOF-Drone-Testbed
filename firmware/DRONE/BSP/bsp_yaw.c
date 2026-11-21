@@ -12,7 +12,7 @@
 
 
 #define YAW_KP 3.0f
-#define YAW_KD 0.2f
+#define YAW_KD 0.5f
 #define YAW_LIMIT 75.0f
 #define YAW_ENABLE 1
 
@@ -33,7 +33,7 @@ static float YAW_Clamp(float value, float min, float max){
 }
 
 void YAW_Init(void){
-	 target = -90.0f;
+	 target = 0.0f;
 	 output = 0.0f;
 
 }
@@ -56,4 +56,6 @@ void YAW_Update(void){
 float YAW_GetOutput(void){
 	return output;
 }
-
+float YAW_GetTarget(void){
+	return target;
+}

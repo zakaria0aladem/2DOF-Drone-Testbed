@@ -10,8 +10,12 @@
  *
  *  Board -> Pi, every 20 ms (50 Hz):
  *    $TEL,ms,pitch,enc_pitch,enc_yaw,target,output,left_us,right_us,armed,link_lost,bad*CS
+ *    ...,yaw_target,yaw_out,m1,m2,m3,m4,state*CS   (state: 0 disarmed,
+ *    1 arming countdown, 2 armed, 3 IMU fault)
  *  Pi -> board, about 10 times a second (also works as the heartbeat):
- *    $SET,<target deg>*CS
+ *    $SET,<pitch target deg>*CS
+ *    $YAW,<yaw target deg>*CS
+ *    $DIS*CS   (disarm the motors)
  */
 
 #ifndef BSP_COMM_H_

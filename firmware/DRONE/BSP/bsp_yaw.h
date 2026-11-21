@@ -13,6 +13,6 @@ void YAW_Init(void);
 void YAW_SetTarget(float target_deg);
 void YAW_Update(void);
 float YAW_GetOutput(void);
-
+float YAW_GetTarget(void);
 
 #endif /* BSP_YAW_H_ */

@@ -18,7 +18,7 @@ void ESC_Update(void);
 void ESC_Arm(void);
 void ESC_Disarm(void);
 uint8_t ESC_IsCountingDown(void);
-
+uint16_t ESC_GetPulse(uint8_t motor);
 
 
 

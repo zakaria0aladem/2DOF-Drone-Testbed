@@ -21,13 +21,15 @@
 #include "bsp_enc.h"
 #include "bsp_pid.h"
 #include "bsp_esc.h"
+#include "bsp_yaw.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 
 #define TEL_PERIOD_MS		20		/* telemetry rate: 50 Hz                    */
-#define TARGET_LIMIT_DEG	35.0f	/* largest target the Pi may ask for        */
+#define TARGET_LIMIT_DEG	35.0f	/* largest pitch target the Pi may ask for  */
+#define YAW_LIMIT_DEG		150.0f	/* largest yaw target (keeps cables from wrapping) */
 #define LINK_TIMEOUT_MS		500		/* no valid command this long = link lost   */
 #define RX_BUF_SIZE			128		/* bytes waiting between interrupt and loop */
 #define LINE_MAX			32		/* longest command line accepted            */
@@ -58,11 +60,12 @@ static uint8_t COMM_Checksum(const char *text, uint32_t len){
 	return sum;
 }
 
-/* checks one "$SET,10.0*CS" line, returns 1 and the target if it is valid */
-static uint8_t COMM_ParseSet(char *msg, float *target_deg){
+/* checks that a line is a valid message: starts with '$', ends with '*'
+   and 2 hex digits, and the checksum matches. On success the checksum is
+   cut off ("$SET,10.0*3A" becomes "$SET,10.0") and 1 is returned */
+static uint8_t COMM_CheckLine(char *msg){
 	char *star, *end;
 	uint32_t sent_sum;
-	float value;
 
 	if(msg[0] != '$'){
 		return 0;
@@ -75,46 +78,80 @@ static uint8_t COMM_ParseSet(char *msg, float *target_deg){
 	if(*end != '\0' || sent_sum != COMM_Checksum(msg + 1, (uint32_t)(star - msg - 1))){
 		return 0;
 	}
-	*star = '\0';	/* cut the checksum off, leaves "$SET,10.0" */
-
-	if(strncmp(msg + 1, "SET,", 4) != 0){
-		return 0;
-	}
-	value = strtof(msg + 5, &end);
-	if(end == msg + 5 || *end != '\0' || isfinite(value) == 0){
-		return 0;
-	}
-
-	if(value > TARGET_LIMIT_DEG){
-		value = TARGET_LIMIT_DEG;
-	}
-	if(value < -TARGET_LIMIT_DEG){
-		value = -TARGET_LIMIT_DEG;
-	}
-	*target_deg = value;
+	*star = '\0';
 	return 1;
 }
 
-static void COMM_HandleLine(uint32_t now){
-	float target_deg;
+/* reads the number in text ("10.0"), clamps it to +/- limit.
+   Returns 1 and the value if it is a real number, 0 otherwise */
+static uint8_t COMM_ParseNumber(const char *text, float limit, float *value){
+	char *end;
+	float v = strtof(text, &end);
 
-	if(COMM_ParseSet(line, &target_deg)){
-		PID_SetTarget(target_deg);
-		last_rx_ms = now;
-		link_used = 1;
-		link_lost = 0;
+	if(end == text || *end != '\0' || isfinite(v) == 0){
+		return 0;
+	}
+	if(v > limit){
+		v = limit;
+	}
+	if(v < -limit){
+		v = -limit;
+	}
+	*value = v;
+	return 1;
+}
+
+/* one complete line from the Pi. Accepted commands:
+     $SET,<deg>   pitch target (clamped to TARGET_LIMIT_DEG)
+     $YAW,<deg>   yaw target   (clamped to YAW_LIMIT_DEG)
+     $DIS         disarm the motors (arming stays on the K1 key)
+   Any valid command also counts as the heartbeat for link-loss */
+static void COMM_HandleLine(uint32_t now){
+	float value;
+
+	if(COMM_CheckLine(line) == 0){
+		bad_count++;
+		return;
+	}
+	if(strncmp(line, "$SET,", 5) == 0 && COMM_ParseNumber(line + 5, TARGET_LIMIT_DEG, &value)){
+		PID_SetTarget(value);
+	}
+	else if(strncmp(line, "$YAW,", 5) == 0 && COMM_ParseNumber(line + 5, YAW_LIMIT_DEG, &value)){
+		YAW_SetTarget(value);
+	}
+	else if(strcmp(line, "$DIS") == 0){
+		ESC_Disarm();
 	}
 	else{
 		bad_count++;
+		return;
+	}
+	last_rx_ms = now;
+	link_used = 1;
+	link_lost = 0;
+}
+
+static uint8_t COMM_GetState(void){
+	if(IMU_IsFault()){
+		return 3;
+	}
+	else if(ESC_IsArmed()){
+		return 2;
+	}
+	else if(ESC_IsCountingDown()){
+		return 1;
+	}
+	else{
+		return 0;
 	}
 }
 
 static void COMM_SendTelemetry(uint32_t now){
 	const IMU_Data_t *imu = IMU_GetData();
-	char msg[96];
+	char msg[160];
 	int len;
 
-	len = snprintf(msg, sizeof(msg), "TEL,%lu,%.1f,%.1f,%.1f,%.1f,%.1f,%u,%u,%u,%u,%lu",
+	len = snprintf(msg, sizeof(msg), "TEL,%lu,%.1f,%.1f,%.1f,%.1f,%.1f,%u,%u,%u,%u,%lu,%.1f,%.1f,%u,%u,%u,%u,%u",
 			(unsigned long)now,
 			imu->pitch,
 			ENC_GetDeg(ENC_PITCH),
@@ -125,7 +162,15 @@ static void COMM_SendTelemetry(uint32_t now){
 			(unsigned)PID_GetRight(),
 			(unsigned)ESC_IsArmed(),
 			(unsigned)link_lost,
-			(unsigned long)bad_count);
+			(unsigned long)bad_count,
+			YAW_GetTarget(),
+			YAW_GetOutput(),
+			(unsigned)ESC_GetPulse(1),
+			(unsigned)ESC_GetPulse(2),
+			(unsigned)ESC_GetPulse(3),
+			(unsigned)ESC_GetPulse(4),
+			(unsigned)COMM_GetState());
+
 	if(len <= 0 || len >= (int)sizeof(msg)){
 		return;
 	}
