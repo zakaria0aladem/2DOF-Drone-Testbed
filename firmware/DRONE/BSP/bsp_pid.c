@@ -11,6 +11,7 @@
 #include "bsp_imu.h"
 #include "bsp_esc.h"
 #include <stdio.h>
+#include "bsp_yaw.h"
 
 /* PID controller, props on.
    Gentle starting gains (props-off demo used KP 10, KD 0.8):
@@ -218,11 +219,11 @@ void PID_Update(void){
 
 	left_us = PID_Clamp(BASE_US + output, MIN_US, MAX_US);
 	right_us  = PID_Clamp(BASE_US - output, MIN_US, MAX_US);
-
-	PID_SetMotor(MOTOR_LEFT_1, left_us);
-	PID_SetMotor(MOTOR_LEFT_2, left_us);
-	PID_SetMotor(MOTOR_RIGHT_1, right_us);
-	PID_SetMotor(MOTOR_RIGHT_2, right_us);
+	float yaw = YAW_GetOutput();
+	PID_SetMotor(MOTOR_LEFT_1, left_us+yaw);
+	PID_SetMotor(MOTOR_LEFT_2, left_us-yaw);
+	PID_SetMotor(MOTOR_RIGHT_1, right_us-yaw);
+	PID_SetMotor(MOTOR_RIGHT_2, right_us+yaw);
 }
 
 /*prints target, angle, output and loop rate, at most once every PRINT_PERIOD_MS*/

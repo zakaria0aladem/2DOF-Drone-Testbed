@@ -31,6 +31,7 @@
 #include "bsp_key.h"
 #include "bsp_buzzer.h"
 #include "bsp_comm.h"     // Raspberry Pi link
+#include "bsp_yaw.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -62,7 +63,9 @@ UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
 volatile float yaw_ang =0;
+volatile float yaw_rate =0;
 volatile float pitch_ang =0;
+volatile float yaw_out = 0;
 volatile uint8_t oled_found = 0;
 uint32_t oled_last_ms = 0;
 uint32_t arm_beep_ms = 0;     /* when the last countdown beep started */
@@ -133,6 +136,7 @@ int main(void)
   ENC_Init();
   IMU_Init();             // IMU
   PID_Init();             // PID
+  YAW_Init();
   COMM_Init();            // Raspberry Pi link on USART3
   HAL_TIM_Base_Start_IT(&htim6);   // PID: start the 500 Hz control loop
   /*0.5s on and 0.5s off*/
@@ -155,6 +159,7 @@ int main(void)
     /* USER CODE BEGIN 3 */
 
 	  yaw_ang = ENC_GetDeg(ENC_YAW);
+	  yaw_out = YAW_GetOutput();
 	  pitch_ang = ENC_GetDeg(ENC_PITCH);
 
 
@@ -732,6 +737,7 @@ static void MX_GPIO_Init(void)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if(htim->Instance == TIM6){
 		IMU_Update();
+		YAW_Update();
 		PID_Update();
 	}
 }
