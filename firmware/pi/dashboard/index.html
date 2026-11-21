@@ -1,0 +1,372 @@
+<!doctype html>
+<!--
+  2-DOF testbed IoT dashboard.
+  Layout and styles: Tabler UI kit (https://tabler.io, MIT licence), font IBM Plex Sans
+  (OFL), charts Chart.js (MIT), MQTT client MQTT.js (MIT). All in vendor/, so the page
+  works without internet.
+  Served by mqtt_bridge.py (http://<pi>:8080). The page is an MQTT client itself: it
+  connects to mosquitto on the Pi over websockets (port 9001), subscribes to
+  testbed/tel, testbed/status, testbed/event and publishes testbed/cmd/... on clicks.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>2-DOF Testbed</title>
+<link href="vendor/tabler.min.css" rel="stylesheet">
+<script src="vendor/mqtt.min.js"></script>
+<script src="vendor/chart.umd.js"></script>
+<style>
+  @font-face { font-family: "IBM Plex Sans"; font-weight: 400; src: url(vendor/fonts/ibm-plex-sans-latin-400-normal.woff2) format("woff2"); }
+  @font-face { font-family: "IBM Plex Sans"; font-weight: 500; src: url(vendor/fonts/ibm-plex-sans-latin-500-normal.woff2) format("woff2"); }
+  @font-face { font-family: "IBM Plex Sans"; font-weight: 600; src: url(vendor/fonts/ibm-plex-sans-latin-600-normal.woff2) format("woff2"); }
+  @font-face { font-family: "IBM Plex Sans"; font-weight: 700; src: url(vendor/fonts/ibm-plex-sans-latin-700-normal.woff2) format("woff2"); }
+  :root { --tblr-font-sans-serif: "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { font-feature-settings: normal; }
+  .chart-box { position: relative; height: 240px; }
+  .cam { width: 100%; aspect-ratio: 4/3; object-fit: contain; background: #000; border-radius: 4px; }
+  .events { max-height: 260px; overflow-y: auto; }
+  .datagrid { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 576px) { .datagrid { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="navbar navbar-expand-md d-print-none">
+    <div class="container-xl">
+      <div class="navbar-brand pe-3">2-DOF Drone Testbed</div>
+      <div class="navbar-nav flex-row order-md-last gap-2 flex-wrap">
+        <span class="badge bg-secondary-lt" id="b-mqtt"><span class="status-dot me-1"></span>Dashboard: connecting</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="page-wrapper">
+    <div class="page-header d-print-none">
+      <div class="container-xl">
+        <div class="row g-2 align-items-center">
+          <div class="col">
+            <div class="page-pretitle">MTR520 final milestone</div>
+            <h2 class="page-title">Live telemetry and control</h2>
+          </div>
+          <div class="col-auto ms-auto">
+            <button class="btn btn-danger" id="disarm">Disarm motors</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <div class="container-xl">
+        <div class="row row-deck row-cards">
+
+          <!-- status row -->
+          <div class="col-6 col-lg-3">
+            <div class="card card-sm"><div class="card-body">
+              <div class="subheader">Board</div>
+              <div class="h3 m-0 mt-1"><span class="status-dot me-2" id="d-board"></span><span id="v-board">?</span></div>
+            </div></div>
+          </div>
+          <div class="col-6 col-lg-3">
+            <div class="card card-sm"><div class="card-body">
+              <div class="subheader">Motors</div>
+              <div class="h3 m-0 mt-1"><span class="status-dot me-2" id="d-state"></span><span id="v-state">?</span></div>
+            </div></div>
+          </div>
+          <div class="col-6 col-lg-3">
+            <div class="card card-sm"><div class="card-body">
+              <div class="subheader">Operating mode</div>
+              <div class="h3 m-0 mt-1" id="v-mode">?</div>
+            </div></div>
+          </div>
+          <div class="col-6 col-lg-3">
+            <div class="card card-sm"><div class="card-body">
+              <div class="subheader">Pi &rarr; board link</div>
+              <div class="h3 m-0 mt-1"><span class="status-dot me-2" id="d-link"></span><span id="v-link">?</span></div>
+            </div></div>
+          </div>
+
+          <!-- pitch -->
+          <div class="col-lg-8">
+            <div class="card">
+              <div class="card-header"><h3 class="card-title">Pitch</h3>
+                <div class="card-actions text-secondary small">last 20 s, degrees</div></div>
+              <div class="card-body">
+                <div class="datagrid mb-3">
+                  <div class="datagrid-item"><div class="datagrid-title">Measured (IMU)</div><div class="datagrid-content h2 m-0" id="n-pitch">–</div></div>
+                  <div class="datagrid-item"><div class="datagrid-title">Measured (encoder)</div><div class="datagrid-content h2 m-0" id="n-encp">–</div></div>
+                  <div class="datagrid-item"><div class="datagrid-title">Reference</div><div class="datagrid-content h2 m-0 text-orange" id="n-ptgt">–</div></div>
+                  <div class="datagrid-item"><div class="datagrid-title">Controller output <span style="text-transform:none">(µs)</span></div><div class="datagrid-content h2 m-0" id="n-pout">–</div></div>
+                </div>
+                <div class="chart-box"><canvas id="ch-pitch"></canvas></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- commands -->
+          <div class="col-lg-4">
+            <div class="card">
+              <div class="card-header"><h3 class="card-title">Commands</h3></div>
+              <div class="card-body">
+                <div class="mb-3">
+                  <label class="form-label">Pitch reference (deg, ±20)</label>
+                  <div class="row g-2 align-items-center">
+                    <div class="col"><input type="range" class="form-range" id="pitch-r" min="-20" max="20" step="0.5" value="0"></div>
+                    <div class="col-auto"><div class="input-group">
+                      <input type="number" class="form-control" style="width:5rem" id="pitch-n" min="-20" max="20" step="0.5" value="0">
+                      <button class="btn btn-primary" id="pitch-send">Send</button></div></div>
+                  </div>
+                  <div class="btn-list mt-2">
+                    <button class="btn btn-sm" data-pitch="-10">−10</button><button class="btn btn-sm" data-pitch="0">0</button><button class="btn btn-sm" data-pitch="10">+10</button>
+                  </div>
+                  <small class="form-hint" id="pitch-hint"></small>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Yaw reference (deg, ±150)</label>
+                  <div class="input-group mb-2">
+                    <input type="number" class="form-control" id="yaw-n" min="-150" max="150" step="5" value="0">
+                    <button class="btn btn-primary" id="yaw-send">Send</button>
+                  </div>
+                  <div class="btn-list">
+                    <button class="btn btn-sm" data-yaw="-90">−90</button><button class="btn btn-sm" data-yaw="-45">−45</button>
+                    <button class="btn btn-sm" data-yaw="0">0</button><button class="btn btn-sm" data-yaw="45">+45</button><button class="btn btn-sm" data-yaw="90">+90</button>
+                  </div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Operating mode</label>
+                  <div class="btn-group w-100">
+                    <button class="btn" id="m-manual">Manual</button><button class="btn" id="m-camera">Camera tracking</button>
+                  </div>
+                </div>
+                <div>
+                  <label class="form-label">Data logging</label>
+                  <div class="btn-list align-items-center">
+                    <button class="btn btn-sm" id="log-start">Start</button><button class="btn btn-sm" id="log-stop">Stop</button>
+                    <span class="badge bg-secondary-lt" id="v-log">off</span>
+                    <a href="/logs/" target="_blank" class="ms-auto small">saved logs</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- yaw -->
+          <div class="col-lg-8">
+            <div class="card">
+              <div class="card-header"><h3 class="card-title">Yaw</h3>
+                <div class="card-actions text-secondary small">last 20 s, degrees</div></div>
+              <div class="card-body">
+                <div class="datagrid mb-3">
+                  <div class="datagrid-item"><div class="datagrid-title">Measured (encoder)</div><div class="datagrid-content h2 m-0" id="n-yaw">–</div></div>
+                  <div class="datagrid-item"><div class="datagrid-title">Reference</div><div class="datagrid-content h2 m-0 text-orange" id="n-ytgt">–</div></div>
+                  <div class="datagrid-item"><div class="datagrid-title">Controller output <span style="text-transform:none">(µs)</span></div><div class="datagrid-content h2 m-0" id="n-yout">–</div></div>
+                  <div class="datagrid-item"><div class="datagrid-title">Error</div><div class="datagrid-content h2 m-0" id="n-yerr">–</div></div>
+                </div>
+                <div class="chart-box"><canvas id="ch-yaw"></canvas></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- motors -->
+          <div class="col-lg-4">
+            <div class="card">
+              <div class="card-header"><h3 class="card-title">Motors</h3>
+                <div class="card-actions text-secondary small">ESC pulse, µs</div></div>
+              <div class="card-body">
+                <div class="mb-3"><div class="d-flex mb-1"><div>M1 · top-right</div><div class="ms-auto fw-medium" id="u-m1">–</div></div>
+                  <div class="progress progress-sm"><div class="progress-bar bg-green" id="b-m1" style="width:0%"></div></div></div>
+                <div class="mb-3"><div class="d-flex mb-1"><div>M2 · top-left</div><div class="ms-auto fw-medium" id="u-m2">–</div></div>
+                  <div class="progress progress-sm"><div class="progress-bar bg-green" id="b-m2" style="width:0%"></div></div></div>
+                <div class="mb-3"><div class="d-flex mb-1"><div>M3 · bottom-left</div><div class="ms-auto fw-medium" id="u-m3">–</div></div>
+                  <div class="progress progress-sm"><div class="progress-bar bg-green" id="b-m3" style="width:0%"></div></div></div>
+                <div class="mb-2"><div class="d-flex mb-1"><div>M4 · bottom-right</div><div class="ms-auto fw-medium" id="u-m4">–</div></div>
+                  <div class="progress progress-sm"><div class="progress-bar bg-green" id="b-m4" style="width:0%"></div></div></div>
+                <small class="text-secondary">Bar: 1000 µs (stopped) to 1500 µs</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- camera -->
+          <div class="col-md-6 col-lg-4">
+            <div class="card">
+              <div class="card-header"><h3 class="card-title">Camera</h3></div>
+              <div class="card-body">
+                <img class="cam" id="cam" alt="camera" hidden>
+                <div class="empty py-4" id="nocam"><p class="empty-title">No camera</p>
+                  <p class="empty-subtitle text-secondary">Camera tracking needs the Pi camera.</p></div>
+                <div class="text-secondary small mt-2" id="cam-info"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- events -->
+          <div class="col-md-6 col-lg-4">
+            <div class="card">
+              <div class="card-header"><h3 class="card-title">Events</h3></div>
+              <div class="list-group list-group-flush events" id="events"></div>
+            </div>
+          </div>
+
+          <!-- link stats -->
+          <div class="col-lg-4">
+            <div class="card">
+              <div class="card-header"><h3 class="card-title">Link statistics</h3></div>
+              <table class="table card-table table-vcenter">
+                <tr><td>Telemetry rate</td><td class="text-end" id="s-rate">–</td></tr>
+                <tr><td>Lines received (good / bad)</td><td class="text-end" id="s-rx">–</td></tr>
+                <tr><td>Commands sent by Pi</td><td class="text-end" id="s-tx">–</td></tr>
+                <tr><td>Bad lines seen by board</td><td class="text-end" id="s-bad">–</td></tr>
+                <tr><td>Serial port</td><td class="text-end" id="s-port">–</td></tr>
+                <tr><td>Log file</td><td class="text-end" id="s-log">–</td></tr>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const host = params.get("broker") || location.hostname || "localhost";
+const client = mqtt.connect("ws://" + host + ":9001", { reconnectPeriod: 2000 });
+
+// ---------- helpers ----------
+function dot(id, color) { $(id).className = "status-dot me-2" + (color ? " status-dot-animated status-" + color : ""); }
+function badge(id, text, color) { $(id).className = "badge bg-" + color + "-lt"; $(id).lastChild.textContent = text; }
+const fmt = (v, d = 1) => (v === undefined || v === null) ? "–" : Number(v).toFixed(d);
+
+client.on("connect", () => {
+  badge("b-mqtt", "Dashboard: connected", "green");
+  client.subscribe(["testbed/tel", "testbed/status", "testbed/event"]);
+});
+client.on("close", () => badge("b-mqtt", "Dashboard: disconnected", "red"));
+client.on("message", (topic, payload) => {
+  let msg; try { msg = JSON.parse(payload.toString()); } catch (e) { return; }
+  if (topic === "testbed/tel") onTel(msg);
+  else if (topic === "testbed/status") onStatus(msg);
+  else if (topic === "testbed/event") addEvent(msg.t, msg.text);
+});
+function send(cmd, value) { client.publish("testbed/cmd/" + cmd, String(value)); }
+
+// ---------- charts ----------
+const WINDOW_S = 20;
+const BLUE = "#206bc4", ORANGE = "#f76707", GREY = "#9ba9be";
+function makeChart(canvas, sets) {
+  return new Chart(canvas, {
+    type: "line",
+    data: { datasets: sets.map(s => ({ label: s.label, data: [], borderColor: s.color, borderWidth: s.width || 2,
+                                       borderDash: s.dash || [], pointRadius: 0, tension: 0 })) },
+    options: {
+      animation: false, maintainAspectRatio: false, parsing: false, normalized: true,
+      scales: { x: { type: "linear", min: -WINDOW_S, max: 0, ticks: { stepSize: 5, callback: v => v === 0 ? "now" : v + " s" } },
+                y: { grace: "10%", suggestedMin: -10, suggestedMax: 10 } },
+      plugins: { legend: { position: "bottom", labels: { boxHeight: 2, boxWidth: 16 } }, tooltip: { enabled: false } },
+      font: { family: "IBM Plex Sans" }
+    }
+  });
+}
+Chart.defaults.font.family = "IBM Plex Sans";
+const pitchChart = makeChart($("ch-pitch"), [
+  { label: "measured (IMU)", color: BLUE }, { label: "measured (encoder)", color: GREY, width: 1.5 },
+  { label: "reference", color: ORANGE, dash: [6, 4] }]);
+const yawChart = makeChart($("ch-yaw"), [
+  { label: "measured (encoder)", color: BLUE }, { label: "reference", color: ORANGE, dash: [6, 4] }]);
+const pitchRows = [], yawRows = [];
+
+function redraw() {
+  const now = performance.now() / 1000;
+  for (const [chart, rows] of [[pitchChart, pitchRows], [yawChart, yawRows]]) {
+    while (rows.length && rows[0][0] < now - WINDOW_S) rows.shift();
+    chart.data.datasets.forEach((ds, i) => {
+      ds.data = rows.filter(r => r[i + 1] !== undefined).map(r => ({ x: r[0] - now, y: r[i + 1] }));
+    });
+    chart.update("none");
+  }
+}
+setInterval(redraw, 100);       // 10 redraws a second is plenty
+
+// ---------- telemetry ----------
+let telCount = 0, lastTelTime = 0;
+function onTel(t) {
+  telCount++; lastTelTime = performance.now();
+  const now = performance.now() / 1000;
+  pitchRows.push([now, t.pitch, t.enc_pitch, t.target]);
+  yawRows.push([now, t.enc_yaw, t.yaw_target]);
+
+  $("n-pitch").textContent = fmt(t.pitch); $("n-encp").textContent = fmt(t.enc_pitch);
+  $("n-ptgt").textContent = fmt(t.target); $("n-pout").textContent = fmt(t.output);
+  $("n-yaw").textContent = fmt(t.enc_yaw); $("n-ytgt").textContent = fmt(t.yaw_target);
+  $("n-yout").textContent = fmt(t.yaw_out);
+  $("n-yerr").textContent = t.yaw_target === undefined ? "–" : fmt(t.yaw_target - t.enc_yaw);
+  for (const m of ["m1", "m2", "m3", "m4"]) {
+    const us = t[m] !== undefined ? t[m] : (m === "m2" || m === "m3" ? t.left_us : t.right_us);
+    $("u-" + m).textContent = us + " µs";
+    $("b-" + m).style.width = Math.max(0, Math.min(100, (us - 1000) / 5)) + "%";
+  }
+  $("v-link").textContent = t.link_lost ? "LOST" : "OK";
+  dot("d-link", t.link_lost ? "red" : "green");
+  $("s-bad").textContent = t.bad;
+}
+
+// ---------- status ----------
+const STATE_COLOR = { DISARMED: "", ARMING: "yellow", ARMED: "green", "IMU FAULT": "red" };
+function onStatus(s) {
+  if (s.bridge !== "online") { $("v-board").textContent = "Bridge offline"; dot("d-board", "red"); return; }
+  $("v-board").textContent = s.board_connected ? "Connected" : "Not responding";
+  dot("d-board", s.board_connected ? "green" : "red");
+  $("v-state").textContent = s.state; dot("d-state", STATE_COLOR[s.state]);
+  $("v-mode").textContent = s.mode === "camera" ? "Camera tracking" : "Manual";
+  $("m-manual").className = "btn" + (s.mode === "manual" ? " btn-primary" : "");
+  $("m-camera").className = "btn" + (s.mode === "camera" ? " btn-primary" : "");
+  $("pitch-hint").textContent = s.mode === "camera" ? "Camera mode: the camera sets the pitch reference." : "";
+  $("v-log").textContent = s.logging ? "recording · " + s.log_rows + " rows" : "off";
+  $("v-log").className = "badge " + (s.logging ? "bg-red-lt" : "bg-secondary-lt");
+  $("s-rx").textContent = s.rx_good + " / " + s.rx_bad;
+  $("s-tx").textContent = s.tx;
+  $("s-port").textContent = s.port;
+  $("s-log").textContent = s.log_file || "–";
+  const cam = s.camera || {};
+  if (cam.available) {
+    if ($("cam").hidden) { $("cam").src = "/camera.mjpg"; $("cam").hidden = false; $("nocam").hidden = true; }
+    $("cam-info").textContent = "Ball " + (cam.found ? "found" : "not seen") + " · x " + fmt(cam.cam_x, 2) +
+      " · camera target " + fmt(cam.cam_target) + "° · " + fmt(cam.fps, 0) + " fps";
+  }
+}
+setInterval(() => {
+  $("s-rate").textContent = telCount + " Hz"; telCount = 0;
+  if (performance.now() - lastTelTime > 1000) { $("v-board").textContent = "No telemetry"; dot("d-board", "red"); }
+}, 1000);
+
+// ---------- events ----------
+function addEvent(t, text) {
+  const row = document.createElement("div");
+  row.className = "list-group-item py-2";
+  const time = document.createElement("span");
+  time.className = "text-secondary me-2";
+  time.textContent = new Date((t || Date.now() / 1000) * 1000).toLocaleTimeString();
+  row.append(time, text);
+  $("events").prepend(row);
+  while ($("events").children.length > 100) $("events").lastChild.remove();
+}
+
+// ---------- commands ----------
+$("pitch-r").oninput = () => $("pitch-n").value = $("pitch-r").value;
+$("pitch-n").oninput = () => $("pitch-r").value = $("pitch-n").value;
+$("pitch-send").onclick = () => send("pitch", $("pitch-n").value);
+document.querySelectorAll("[data-pitch]").forEach(b => b.onclick = () => {
+  $("pitch-n").value = $("pitch-r").value = b.dataset.pitch; send("pitch", b.dataset.pitch); });
+$("yaw-send").onclick = () => send("yaw", $("yaw-n").value);
+document.querySelectorAll("[data-yaw]").forEach(b => b.onclick = () => { $("yaw-n").value = b.dataset.yaw; send("yaw", b.dataset.yaw); });
+$("m-manual").onclick = () => send("mode", "manual");
+$("m-camera").onclick = () => send("mode", "camera");
+$("log-start").onclick = () => send("log", "start");
+$("log-stop").onclick = () => send("log", "stop");
+$("disarm").onclick = () => send("disarm", 1);
+</script>
+</body>
+</html>

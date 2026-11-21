@@ -32,7 +32,7 @@ class DataLog:
 
     def _on_tel(self, tel):
         row = {"t": round(tel["pi_time"] - self.t0, 3)}
-        row.update({k: tel[k] for k in protocol.TEL_FIELDS})
+        row.update({k: tel.get(k, "") for k in protocol.TEL_FIELDS})
         row["pi_target"] = self.link.target
         row["pi_sending"] = int(self.link.sending)
         if self.extra:
