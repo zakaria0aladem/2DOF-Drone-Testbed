@@ -18,9 +18,14 @@
    raise step by step while tuning.
    KI = 0 is the old PD. Test 2: KI 2 (raise to 4 if it settles slowly,
    lower if it overshoots) to remove the ~6 deg steady-state error */
-#define KP				6.0f	/* us per deg of error           */
-#define KI				2.5f	/* us per deg*s of error (0 = PD) */
-#define KD				0.85f	/* us per deg/s of rotation rate */
+#define KP_START		6.0f	/* us per deg of error            (start value) */
+#define KI_START		2.5f	/* us per deg*s of error (0 = PD) (start value) */
+#define KD_START		0.85f	/* us per deg/s of rotation rate  (start value) */
+/* the dashboard can change the gains while running (PID_SetGains),
+   only inside these ranges. A reset goes back to the start values */
+#define KP_MAX			20.0f
+#define KI_MAX			10.0f
+#define KD_MAX			5.0f
 
 #define DT_S			0.002f	/* PID_Update runs from TIM6 at 500 Hz       */
 #define BASE_US			1200	/* throttle both sides get before correction */
@@ -71,6 +76,9 @@ static float output = 0.0f;
 static float left_us = 0.0f;
 static float right_us = 0.0f;
 static float integral = 0.0f;
+static float kp = KP_START;
+static float ki = KI_START;
+static float kd = KD_START;
 static uint8_t switch_on = 0;
 static uint8_t cutoff = 0;
 static volatile uint32_t loop_count = 0;
@@ -214,8 +222,8 @@ void PID_Update(void){
 	}
 
 	error = target - angle;
-	integral = PID_Clamp(integral + KI * error * DT_S, -I_LIMIT, I_LIMIT);
-	output = PID_Clamp(KP * error + integral - KD * rate, -OUT_LIMIT, OUT_LIMIT);
+	integral = PID_Clamp(integral + ki * error * DT_S, -I_LIMIT, I_LIMIT);
+	output = PID_Clamp(kp * error + integral - kd * rate, -OUT_LIMIT, OUT_LIMIT);
 
 	left_us = PID_Clamp(BASE_US + output, MIN_US, MAX_US);
 	right_us  = PID_Clamp(BASE_US - output, MIN_US, MAX_US);
@@ -249,4 +257,34 @@ void PID_Print(void){
 /* K1: clears an angle cutoff so the motors can be armed again */
 void PID_ClearCutoff(void){
 	cutoff = 0;
+}
+
+/* new gains from the dashboard. If any value is outside its range nothing
+   changes. The integral restarts, because it was built with the old Ki */
+void PID_SetGains(float new_kp, float new_ki, float new_kd){
+	if(new_kp < 0.0f || new_kp > KP_MAX){
+		return;
+	}
+	if(new_ki < 0.0f || new_ki > KI_MAX){
+		return;
+	}
+	if(new_kd < 0.0f || new_kd > KD_MAX){
+		return;
+	}
+	kp = new_kp;
+	ki = new_ki;
+	kd = new_kd;
+	integral = 0.0f;
+}
+
+float PID_GetKp(void){
+	return kp;
+}
+
+float PID_GetKi(void){
+	return ki;
+}
+
+float PID_GetKd(void){
+	return kd;
 }

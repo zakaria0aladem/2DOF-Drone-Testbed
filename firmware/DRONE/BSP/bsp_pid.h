@@ -19,6 +19,10 @@ float PID_GetOutput(void);
 float PID_GetLeft(void);
 float PID_GetRight(void);
 void PID_ClearCutoff(void);
+void PID_SetGains(float new_kp, float new_ki, float new_kd);
+float PID_GetKp(void);
+float PID_GetKi(void);
+float PID_GetKd(void);
 
 
 

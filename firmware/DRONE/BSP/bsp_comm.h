@@ -16,6 +16,9 @@
  *    $SET,<pitch target deg>*CS
  *    $YAW,<yaw target deg>*CS
  *    $DIS*CS   (disarm the motors)
+ *    $GP,kp,ki,kd*CS   pitch gains     $GY,kp,ki,kd*CS   yaw gains
+ *  Board -> Pi, once a second and right after a gain change:
+ *    $GAIN,pitch_kp,pitch_ki,pitch_kd,yaw_kp,yaw_ki,yaw_kd*CS
  */
 
 #ifndef BSP_COMM_H_

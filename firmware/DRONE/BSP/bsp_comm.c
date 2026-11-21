@@ -32,7 +32,8 @@
 #define YAW_LIMIT_DEG		150.0f	/* largest yaw target (keeps cables from wrapping) */
 #define LINK_TIMEOUT_MS		500		/* no valid command this long = link lost   */
 #define RX_BUF_SIZE			128		/* bytes waiting between interrupt and loop */
-#define LINE_MAX			32		/* longest command line accepted            */
+#define LINE_MAX			48		/* longest command line accepted            */
+#define GAIN_PERIOD_MS		1000	/* $GAIN line (gains in use): once a second  */
 
 /* filled by the interrupt, emptied by COMM_Update */
 static volatile uint8_t rx_buf[RX_BUF_SIZE];
@@ -44,6 +45,8 @@ static uint8_t line_len = 0;
 static uint8_t line_too_long = 0;
 
 static uint32_t last_tel_ms = 0;
+static uint32_t last_gain_ms = 0;
+static uint8_t gain_due = 0;		/* 1 = send $GAIN soon (after a gain change) */
 static uint32_t last_rx_ms = 0;
 static uint8_t link_used = 0;		/* 1 after the first valid command */
 static uint8_t link_lost = 0;
@@ -101,13 +104,40 @@ static uint8_t COMM_ParseNumber(const char *text, float limit, float *value){
 	return 1;
 }
 
+/* reads "count" numbers separated by commas ("6,2.5,0.85") into values[].
+   Returns 1 only if there are exactly that many real numbers */
+static uint8_t COMM_ParseNumbers(const char *text, float *values, uint8_t count){
+	char *end;
+	uint8_t i;
+
+	for(i = 0; i < count; i++){
+		values[i] = strtof(text, &end);
+		if(end == text || isfinite(values[i]) == 0){
+			return 0;
+		}
+		if(i < count - 1){
+			if(*end != ','){
+				return 0;
+			}
+			text = end + 1;
+		}
+		else if(*end != '\0'){
+			return 0;
+		}
+	}
+	return 1;
+}
+
 /* one complete line from the Pi. Accepted commands:
      $SET,<deg>   pitch target (clamped to TARGET_LIMIT_DEG)
      $YAW,<deg>   yaw target   (clamped to YAW_LIMIT_DEG)
      $DIS         disarm the motors (arming stays on the K1 key)
+     $GP,kp,ki,kd pitch gains (range checks in PID_SetGains)
+     $GY,kp,ki,kd yaw gains   (range checks in YAW_SetGains)
    Any valid command also counts as the heartbeat for link-loss */
 static void COMM_HandleLine(uint32_t now){
 	float value;
+	float gains[3];
 
 	if(COMM_CheckLine(line) == 0){
 		bad_count++;
@@ -121,6 +151,14 @@ static void COMM_HandleLine(uint32_t now){
 	}
 	else if(strcmp(line, "$DIS") == 0){
 		ESC_Disarm();
+	}
+	else if(strncmp(line, "$GP,", 4) == 0 && COMM_ParseNumbers(line + 4, gains, 3)){
+		PID_SetGains(gains[0], gains[1], gains[2]);
+		gain_due = 1;		/* tell the Pi straight away what is in use now */
+	}
+	else if(strncmp(line, "$GY,", 4) == 0 && COMM_ParseNumbers(line + 4, gains, 3)){
+		YAW_SetGains(gains[0], gains[1], gains[2]);
+		gain_due = 1;
 	}
 	else{
 		bad_count++;
@@ -171,6 +209,20 @@ static void COMM_SendTelemetry(uint32_t now){
 			(unsigned)ESC_GetPulse(4),
 			(unsigned)COMM_GetState());
 
+	if(len <= 0 || len >= (int)sizeof(msg)){
+		return;
+	}
+	printf("$%s*%02X\r\n", msg, COMM_Checksum(msg, (uint32_t)len));
+}
+
+/* $GAIN,pitch_kp,pitch_ki,pitch_kd,yaw_kp,yaw_ki,yaw_kd: the gains in use */
+static void COMM_SendGains(void){
+	char msg[96];
+	int len;
+
+	len = snprintf(msg, sizeof(msg), "GAIN,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f",
+			PID_GetKp(), PID_GetKi(), PID_GetKd(),
+			YAW_GetKp(), YAW_GetKi(), YAW_GetKd());
 	if(len <= 0 || len >= (int)sizeof(msg)){
 		return;
 	}
@@ -229,6 +281,12 @@ void COMM_Update(void){
 	if(now - last_tel_ms >= TEL_PERIOD_MS){
 		last_tel_ms = now;
 		COMM_SendTelemetry(now);
+	}
+	/* never in the same pass as $TEL, so one call never prints both lines */
+	else if(gain_due || now - last_gain_ms >= GAIN_PERIOD_MS){
+		last_gain_ms = now;
+		gain_due = 0;
+		COMM_SendGains();
 	}
 }
 
