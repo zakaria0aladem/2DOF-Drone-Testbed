@@ -9,7 +9,7 @@
  {
   "id": "broker",
   "type": "mqtt-broker",
-  "name": "Pi mosquitto",
+  "name": "mosquitto (laptop)",
   "broker": "localhost",
   "port": "1883",
   "clientid": "",
@@ -1593,5 +1593,43 @@
   "x": 900,
   "y": 1740,
   "wires": []
+ },
+ {
+  "id": "g_camera",
+  "type": "ui-group",
+  "name": "Camera",
+  "page": "ui_page",
+  "width": 6,
+  "height": 1,
+  "order": 7,
+  "showTitle": true,
+  "className": "",
+  "visible": "true",
+  "disabled": "false",
+  "groupType": "default"
+ },
+ {
+  "id": "cam_view",
+  "type": "ui-template",
+  "z": "tb_flow",
+  "group": "g_camera",
+  "page": "",
+  "ui": "",
+  "name": "Camera picture (MJPEG from the bridge)",
+  "order": 1,
+  "width": 0,
+  "height": 0,
+  "head": "",
+  "format": "<template>\n  <div>\n    <div style=\"width:100%; aspect-ratio:4/3; background:#000; border-radius:6px; overflow:hidden\">\n      <img :src=\"src\" @error=\"retry\" alt=\"Pi camera\" style=\"width:100%; height:100%; object-fit:contain\">\n    </div>\n    <div style=\"font-size:12px; opacity:0.7; margin-top:4px\">\n      Live picture from the Pi camera ({{ pi }}:8080/camera.mjpg).\n      If the Pi gets a new IP, change it in this node.\n    </div>\n  </div>\n</template>\n<script>\nexport default {\n  data() { return { pi: \"10.25.155.231\", n: 0 } },\n  computed: { src() { return \"http://\" + this.pi + \":8080/camera.mjpg?n=\" + this.n } },\n  methods: { retry() { setTimeout(() => { this.n++ }, 2000) } }   // bridge restarted: try again\n}\n</script>",
+  "storeOutMessages": true,
+  "passthru": false,
+  "resendOnRefresh": true,
+  "templateScope": "local",
+  "className": "",
+  "x": 200,
+  "y": 2300,
+  "wires": [
+   []
+  ]
  }
 ]

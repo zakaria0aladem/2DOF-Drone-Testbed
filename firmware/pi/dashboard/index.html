@@ -4,9 +4,12 @@
   Layout and styles: Tabler UI kit (https://tabler.io, MIT licence), font IBM Plex Sans
   (OFL), charts Chart.js (MIT), MQTT client MQTT.js (MIT). All in vendor/, so the page
   works without internet.
-  Served by mqtt_bridge.py (http://<pi>:8080). The page is an MQTT client itself: it
-  connects to mosquitto on the Pi over websockets (port 9001), subscribes to
-  testbed/tel, testbed/status, testbed/event and publishes testbed/cmd/... on clicks.
+  Served by mqtt_bridge.py (http://<pi>:8080), or opened as a plain file. The page is an
+  MQTT client itself: it connects to the mosquitto broker on the laptop over websockets
+  (ws://<laptop>:9001). The "Broker" button (top right) sets the broker address and the
+  Pi address (camera picture and logs come from the Pi). Saved in this browser only.
+  It subscribes to testbed/tel, testbed/status, testbed/event, testbed/gains and
+  publishes testbed/cmd/... on clicks.
 -->
 <html lang="en">
 <head>
@@ -27,6 +30,7 @@
   .cam { width: 100%; aspect-ratio: 4/3; object-fit: contain; background: #000; border-radius: 4px; }
   .events { max-height: 260px; overflow-y: auto; }
   .datagrid { grid-template-columns: repeat(4, 1fr); }
+  [hidden] { display: none !important; }
   @media (max-width: 576px) { .datagrid { grid-template-columns: repeat(2, 1fr); } }
 </style>
 </head>
@@ -37,11 +41,36 @@
       <div class="navbar-brand pe-3">2-DOF Drone Testbed</div>
       <div class="navbar-nav flex-row order-md-last gap-2 flex-wrap">
         <span class="badge bg-secondary-lt" id="b-mqtt"><span class="status-dot me-1"></span>Dashboard: connecting</span>
+        <button class="btn btn-sm" id="broker-btn">Broker: Pi</button>
       </div>
     </div>
   </header>
 
   <div class="page-wrapper">
+    <div class="container-xl pt-3" id="broker-box" hidden>
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">Broker connection</h3></div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="bk-host">Broker address (the laptop running mosquitto)</label>
+              <input class="form-control" id="bk-host" placeholder="192.168.1.20">
+              <div class="form-hint">Find it on the laptop with <code>ipconfig</code> (IPv4 Address). Use <code>localhost</code> on the laptop itself.</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="bk-pihost">Pi address</label>
+              <input class="form-control" id="bk-pihost" placeholder="10.25.155.231">
+              <div class="form-hint">Used for the camera picture and the saved logs.</div>
+            </div>
+            <div class="col-12 d-flex gap-2">
+              <button class="btn btn-primary" id="bk-save">Connect</button>
+              <button class="btn" id="bk-close">Close</button>
+              <span class="text-secondary small align-self-center">Saved in this browser only.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="page-header d-print-none">
       <div class="container-xl">
         <div class="row g-2 align-items-center">
@@ -143,7 +172,7 @@
                   <div class="btn-list align-items-center">
                     <button class="btn btn-sm" id="log-start">Start</button><button class="btn btn-sm" id="log-stop">Stop</button>
                     <span class="badge bg-secondary-lt" id="v-log">off</span>
-                    <a href="/logs/" target="_blank" class="ms-auto small">saved logs</a>
+                    <a href="/logs/" id="logs-link" target="_blank" class="ms-auto small">saved logs</a>
                   </div>
                 </div>
               </div>
@@ -263,26 +292,60 @@
 "use strict";
 const $ = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
-const host = params.get("broker") || location.hostname || "localhost";
-const client = mqtt.connect("ws://" + host + ":9001", { reconnectPeriod: 2000 });
 
 // ---------- helpers ----------
 function dot(id, color) { $(id).className = "status-dot me-2" + (color ? " status-dot-animated status-" + color : ""); }
 function badge(id, text, color) { $(id).className = "badge bg-" + color + "-lt"; $(id).lastChild.textContent = text; }
 const fmt = (v, d = 1) => (v === undefined || v === null) ? "–" : Number(v).toFixed(d);
 
-client.on("connect", () => {
+// ---------- broker address ----------
+// Saved in this browser (localStorage). ?broker=<address> in the link overrides it.
+function loadCfg() {
+  let c = {};
+  try { c = JSON.parse(localStorage.getItem("testbed-broker") || "{}"); } catch (e) {}
+  const served = location.protocol.startsWith("http") ? location.hostname : "";
+  return { broker: params.get("broker") || c.broker || "localhost",
+           piHost: c.piHost || served || "localhost" };
+}
+const cfg = loadCfg();
+// camera and logs always come from the bridge's web server on the Pi
+const piHttp = location.protocol.startsWith("http") && location.hostname === cfg.piHost ? "" : "http://" + cfg.piHost + ":8080";
+
+let client;
+function connectBroker() {
+  $("broker-btn").textContent = "Broker: " + cfg.broker;
+  client = mqtt.connect("ws://" + cfg.broker + ":9001", { reconnectPeriod: 2000, connectTimeout: 5000 });
+  client.on("connect", onConnect);
+  client.on("close", () => badge("b-mqtt", "Dashboard: no broker at " + cfg.broker, "red"));
+  client.on("message", onMessage);
+}
+
+function showBrokerBox(show) {
+  $("broker-box").hidden = !show;
+  if (!show) return;
+  $("bk-host").value = cfg.broker; $("bk-pihost").value = cfg.piHost;
+}
+$("broker-btn").onclick = () => showBrokerBox($("broker-box").hidden);
+$("bk-close").onclick = () => showBrokerBox(false);
+$("bk-save").onclick = () => {
+  const clean = v => v.trim().replace(/^\w+:\/\//, "").replace(/[:\/].*$/, "");
+  const c = { broker: clean($("bk-host").value) || cfg.broker, piHost: clean($("bk-pihost").value) || cfg.piHost };
+  try { localStorage.setItem("testbed-broker", JSON.stringify(c)); } catch (e) {}
+  const url = new URL(location.href); url.searchParams.delete("broker");
+  location.replace(url.href);      // reload cleanly with the new address
+};
+
+function onConnect() {
   badge("b-mqtt", "Dashboard: connected", "green");
   client.subscribe(["testbed/tel", "testbed/status", "testbed/event", "testbed/gains"]);
-});
-client.on("close", () => badge("b-mqtt", "Dashboard: disconnected", "red"));
-client.on("message", (topic, payload) => {
+}
+function onMessage(topic, payload) {
   let msg; try { msg = JSON.parse(payload.toString()); } catch (e) { return; }
   if (topic === "testbed/tel") onTel(msg);
   else if (topic === "testbed/status") onStatus(msg);
   else if (topic === "testbed/event") addEvent(msg.t, msg.text);
   else if (topic === "testbed/gains") onGains(msg);
-});
+}
 function send(cmd, value) { client.publish("testbed/cmd/" + cmd, String(value)); }
 
 // ---------- charts ----------
@@ -364,7 +427,7 @@ function onStatus(s) {
   $("s-log").textContent = s.log_file || "–";
   const cam = s.camera || {};
   if (cam.available) {
-    if ($("cam").hidden) { $("cam").src = "/camera.mjpg"; $("cam").hidden = false; $("nocam").hidden = true; }
+    if ($("cam").hidden) { $("cam").src = piHttp + "/camera.mjpg"; $("cam").hidden = false; $("nocam").hidden = true; }
     $("cam-info").textContent = "Ball " + (cam.found ? "found" : "not seen") + " · x " + fmt(cam.cam_x, 2) +
       " · camera target " + fmt(cam.cam_target) + "° · " + fmt(cam.fps, 0) + " fps";
   }
@@ -419,6 +482,9 @@ $("m-camera").onclick = () => send("mode", "camera");
 $("log-start").onclick = () => send("log", "start");
 $("log-stop").onclick = () => send("log", "stop");
 $("disarm").onclick = () => send("disarm", 1);
+
+$("logs-link").href = piHttp + "/logs/";
+connectBroker();
 </script>
 </body>
 </html>

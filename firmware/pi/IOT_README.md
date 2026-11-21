@@ -1,16 +1,31 @@
 # IoT dashboard (Pi side)
 
 ```
- STM32 board --USART3 ($TEL / $SET $YAW $DIS)--> mqtt_bridge.py --MQTT--> mosquitto broker
-                                                   |                          |
-                                                   |                 +--------+---------+
-                                                   |                 |                  |
-                                        web dashboard (port 8080)   Node-RED dashboard   ROS 2 node
-                                                                    (port 1880)          (source:=mqtt)
+ RIG                     PI (gateway)                 LAPTOP (server)              ANY BROWSER
+ STM32 board --USB serial--> mqtt_bridge.py --MQTT 1883--> mosquitto broker --ws 9001--> web dashboard
+ ($TEL 50 Hz /             (only program on               |                          (served by the Pi, :8080)
+  $SET $YAW $DIS $GP $GY)   the serial port)              +--MQTT 1883--> Node-RED --> Node-RED dashboard
+                                                                                       (laptop :1880/dashboard/testbed)
 ```
 
 `mqtt_bridge.py` is the only program that opens the serial port. Everything else
-talks to it through MQTT, so several dashboards can watch and command at once.
+talks to it through the broker on the laptop, so several dashboards can watch and
+command at once. The ROS 2 node (`source:=mqtt`) is one more client of the same broker.
+
+## Files
+
+| File | Runs on | Job |
+|---|---|---|
+| `firmware/DRONE/BSP/bsp_comm.c/.h` | STM32 | serial protocol: sends `$TEL`/`$GAIN`, checks and applies `$SET $YAW $DIS $GP $GY`, link-loss timer |
+| `mqtt_bridge.py` | Pi | MQTT client; serial <-> MQTT; command limits; status; CSV logging; camera mode; web server :8080 |
+| `link.py` | Pi | `BoardLink`: opens the serial port, reads lines in a thread, sends commands 10x/s |
+| `protocol.py` | Pi | line format, checksum, field names, builds and parses every message |
+| `datalog.py` | Pi | writes telemetry to `logs/*.csv` |
+| `camera_track.py` | Pi | colour tracking, used by the bridge in camera mode |
+| `mosquitto/testbed.conf` | laptop | broker settings: port 1883 (programs) and 9001 (browsers) |
+| `nodered/testbed_flow.json` | laptop | Node-RED flow = the Node-RED dashboard |
+| `dashboard/index.html` + `vendor/` | browser | the web dashboard (an MQTT client itself) |
+| `fake_board.py` | Pi/Linux | pretend STM32 for testing without the rig |
 
 ## MQTT topics
 
@@ -25,38 +40,36 @@ talks to it through MQTT, so several dashboards can watch and command at once.
 | `testbed/cmd/log` | dashboard -> Pi | `"start"` or `"stop"` (CSV in `logs/`) |
 | `testbed/cmd/disarm` | dashboard -> Pi | anything: disarms the motors (arming only with K1) |
 
-## One-time setup on the Pi
+## One-time setup
 
-Type each command on one line:
+Laptop (Windows), PowerShell as administrator, one line each:
+1. Install Mosquitto (64-bit installer from https://mosquitto.org/download/) with default options.
+2. `Stop-Service mosquitto; Set-Service mosquitto -StartupType Manual` (we start it with our own settings instead)
+3. `New-NetFirewallRule -DisplayName "MQTT testbed" -Direction Inbound -Protocol TCP -LocalPort 1883,9001 -Action Allow`
+4. Install Node.js LTS from https://nodejs.org, then `npm install -g --unsafe-perm node-red`
+5. `node-red` (leave it open), open http://localhost:1880, menu -> Manage palette -> Install -> `@flowfuse/node-red-dashboard`
+6. Menu -> Import -> select `firmware/pi/nodered/testbed_flow.json` -> Import -> Deploy
 
-1. `sudo apt install -y mosquitto mosquitto-clients python3-paho-mqtt python3-serial`
-2. `sudo cp ~/2DOF-Drone-Testbed/firmware/pi/mosquitto/testbed.conf /etc/mosquitto/conf.d/`
-3. `sudo systemctl restart mosquitto`
+Pi: `sudo apt install -y python3-paho-mqtt python3-serial` (and copy `firmware/pi` to `~/drone/pi`).
+The Pi does not need its own mosquitto any more: `sudo systemctl disable --now mosquitto`.
 
 ## Every time
 
-1. Plug the board's USB-C port 2 into the Pi, power the rig.
-2. `cd ~/2DOF-Drone-Testbed/firmware/pi`
-3. `python3 mqtt_bridge.py`
-4. On the laptop/phone (same Wi-Fi): open `http://<pi-name>.local:8080`
+1. Laptop: `ipconfig` -> note the IPv4 address (example `10.25.155.40`). It can change between days.
+2. Laptop, window 1: `& "C:\Program Files\mosquitto\mosquitto.exe" -v -c "<repo>\firmware\pi\mosquitto\testbed.conf"`
+3. Laptop, window 2: `node-red`
+4. Board USB-C port 2 into the Pi, power the rig.
+5. Pi: `cd ~/drone/pi && python3 mqtt_bridge.py --broker <laptop IP>`
+6. Node-RED dashboard: http://localhost:1880/dashboard/testbed
+7. Web dashboard: `http://<pi IP>:8080`, click **Broker** (top right), enter the laptop IP once.
 
-Check the broker by hand: `mosquitto_sub -t "testbed/#" -v`
-
-## Node-RED dashboard (second dashboard)
-
-One-time:
-1. `bash <(curl -sL https://github.com/node-red/linux-installers/releases/latest/download/update-nodejs-and-nodered-deb)`
-2. `cd ~/.node-red && npm install @flowfuse/node-red-dashboard`
-3. `sudo systemctl enable --now nodered`
-4. Open `http://<pi-name>.local:1880`, menu -> Import -> select `nodered/testbed_flow.json` -> Import -> Deploy.
-
-Then (with `mqtt_bridge.py` running) open `http://<pi-name>.local:1880/dashboard/testbed`.
+The window from step 2 prints every client that connects: that is the broker at work.
 
 ## Testing without the rig
 
 ```
 python3 fake_board.py                 # prints a port such as /dev/pts/3
-python3 mqtt_bridge.py --port /dev/pts/3 --no-camera
+python3 mqtt_bridge.py --port /dev/pts/3 --no-camera --broker <laptop IP>
 ```
 
 ## Credits (third-party files in `dashboard/vendor/`)
