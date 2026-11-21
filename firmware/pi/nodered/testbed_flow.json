@@ -1321,5 +1321,277 @@
     "s_pitch"
    ]
   ]
+ },
+ {
+  "id": "g_gains",
+  "type": "ui-group",
+  "name": "Controller gains",
+  "page": "ui_page",
+  "width": 4,
+  "height": 1,
+  "order": 6,
+  "showTitle": true,
+  "className": "",
+  "visible": "true",
+  "disabled": "false",
+  "groupType": "default"
+ },
+ {
+  "id": "t_gp",
+  "type": "ui-text",
+  "z": "tb_flow",
+  "group": "g_gains",
+  "order": 1,
+  "width": 0,
+  "height": 0,
+  "name": "",
+  "label": "Pitch gains in use (Kp / Ki / Kd)",
+  "format": "{{msg.payload}}",
+  "layout": "row-spread",
+  "style": false,
+  "font": "",
+  "fontSize": 16,
+  "color": "#1d2421",
+  "wrapText": false,
+  "className": "",
+  "x": 900,
+  "y": 1540,
+  "wires": []
+ },
+ {
+  "id": "t_gy",
+  "type": "ui-text",
+  "z": "tb_flow",
+  "group": "g_gains",
+  "order": 2,
+  "width": 0,
+  "height": 0,
+  "name": "",
+  "label": "Yaw gains in use (Kp / Ki / Kd)",
+  "format": "{{msg.payload}}",
+  "layout": "row-spread",
+  "style": false,
+  "font": "",
+  "fontSize": 16,
+  "color": "#1d2421",
+  "wrapText": false,
+  "className": "",
+  "x": 900,
+  "y": 1580,
+  "wires": []
+ },
+ {
+  "id": "f_gains",
+  "type": "function",
+  "z": "tb_flow",
+  "name": "format gains",
+  "func": "const g = msg.payload;          // JSON object from testbed/gains (1 per second)\nconst f = v => Number(v).toFixed(2);\nreturn [{payload: f(g.pitch_kp) + \" / \" + f(g.pitch_ki) + \" / \" + f(g.pitch_kd)},\n        {payload: f(g.yaw_kp) + \" / \" + f(g.yaw_ki) + \" / \" + f(g.yaw_kd)}];",
+  "outputs": 2,
+  "timeout": 0,
+  "noerr": 0,
+  "initialize": "",
+  "finalize": "",
+  "libs": [],
+  "x": 650,
+  "y": 1540,
+  "wires": [
+   [
+    "t_gp"
+   ],
+   [
+    "t_gy"
+   ]
+  ]
+ },
+ {
+  "id": "in_gains",
+  "type": "mqtt in",
+  "z": "tb_flow",
+  "name": "testbed/gains",
+  "topic": "testbed/gains",
+  "qos": "0",
+  "datatype": "json",
+  "broker": "broker",
+  "nl": false,
+  "rap": true,
+  "rh": 0,
+  "inputs": 0,
+  "x": 400,
+  "y": 1540,
+  "wires": [
+   [
+    "f_gains"
+   ]
+  ]
+ },
+ {
+  "id": "fm_gp",
+  "type": "ui-form",
+  "z": "tb_flow",
+  "name": "",
+  "group": "g_gains",
+  "label": "Pitch PID (Kp 0-20, Ki 0-10, Kd 0-5)",
+  "order": 3,
+  "width": 0,
+  "height": 0,
+  "options": [
+   {
+    "label": "Kp",
+    "key": "kp",
+    "type": "number",
+    "required": true,
+    "rows": null
+   },
+   {
+    "label": "Ki",
+    "key": "ki",
+    "type": "number",
+    "required": true,
+    "rows": null
+   },
+   {
+    "label": "Kd",
+    "key": "kd",
+    "type": "number",
+    "required": true,
+    "rows": null
+   }
+  ],
+  "formValue": {
+   "kp": "",
+   "ki": "",
+   "kd": ""
+  },
+  "payload": "",
+  "submit": "Apply",
+  "cancel": "",
+  "resetOnSubmit": false,
+  "topic": "",
+  "topicType": "str",
+  "splitLayout": true,
+  "className": "",
+  "passthru": false,
+  "dropdownOptions": [],
+  "x": 400,
+  "y": 1720,
+  "wires": [
+   [
+    "f_gp"
+   ]
+  ]
+ },
+ {
+  "id": "fm_gy",
+  "type": "ui-form",
+  "z": "tb_flow",
+  "name": "",
+  "group": "g_gains",
+  "label": "Yaw PID (Kp 0-10, Ki 0-5, Kd 0-2)",
+  "order": 4,
+  "width": 0,
+  "height": 0,
+  "options": [
+   {
+    "label": "Kp",
+    "key": "kp",
+    "type": "number",
+    "required": true,
+    "rows": null
+   },
+   {
+    "label": "Ki",
+    "key": "ki",
+    "type": "number",
+    "required": true,
+    "rows": null
+   },
+   {
+    "label": "Kd",
+    "key": "kd",
+    "type": "number",
+    "required": true,
+    "rows": null
+   }
+  ],
+  "formValue": {
+   "kp": "",
+   "ki": "",
+   "kd": ""
+  },
+  "payload": "",
+  "submit": "Apply",
+  "cancel": "",
+  "resetOnSubmit": false,
+  "topic": "",
+  "topicType": "str",
+  "splitLayout": true,
+  "className": "",
+  "passthru": false,
+  "dropdownOptions": [],
+  "x": 400,
+  "y": 1760,
+  "wires": [
+   [
+    "f_gy"
+   ]
+  ]
+ },
+ {
+  "id": "f_gp",
+  "type": "function",
+  "z": "tb_flow",
+  "name": "pitch gains -> JSON",
+  "func": "// form gives {kp, ki, kd}; the bridge checks the ranges\nmsg.payload = JSON.stringify({axis: \"pitch\", kp: Number(msg.payload.kp), ki: Number(msg.payload.ki), kd: Number(msg.payload.kd)});\nreturn msg;",
+  "outputs": 1,
+  "timeout": 0,
+  "noerr": 0,
+  "initialize": "",
+  "finalize": "",
+  "libs": [],
+  "x": 650,
+  "y": 1720,
+  "wires": [
+   [
+    "o_gains"
+   ]
+  ]
+ },
+ {
+  "id": "f_gy",
+  "type": "function",
+  "z": "tb_flow",
+  "name": "yaw gains -> JSON",
+  "func": "// form gives {kp, ki, kd}; the bridge checks the ranges\nmsg.payload = JSON.stringify({axis: \"yaw\", kp: Number(msg.payload.kp), ki: Number(msg.payload.ki), kd: Number(msg.payload.kd)});\nreturn msg;",
+  "outputs": 1,
+  "timeout": 0,
+  "noerr": 0,
+  "initialize": "",
+  "finalize": "",
+  "libs": [],
+  "x": 650,
+  "y": 1760,
+  "wires": [
+   [
+    "o_gains"
+   ]
+  ]
+ },
+ {
+  "id": "o_gains",
+  "type": "mqtt out",
+  "z": "tb_flow",
+  "name": "testbed/cmd/gains",
+  "topic": "testbed/cmd/gains",
+  "qos": "0",
+  "retain": "false",
+  "respTopic": "",
+  "contentType": "",
+  "userProps": "",
+  "correl": "",
+  "expiry": "",
+  "broker": "broker",
+  "x": 900,
+  "y": 1740,
+  "wires": []
  }
 ]

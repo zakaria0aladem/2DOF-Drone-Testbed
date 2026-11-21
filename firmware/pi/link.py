@@ -29,6 +29,9 @@ class BoardLink:
         self.target = 0.0           # pitch target (deg), sent every period
         self.yaw_target = None      # None = don't send $YAW (board keeps its own)
         self._disarm_left = 0       # $DIS lines still to send
+        self._extra = []            # one-off command lines waiting to be sent
+        self.gains = None           # newest $GAIN from the board (dict)
+        self.gain_listeners = []    # functions called with every gains dict
         self.sending = True         # False = stop sending, to test link loss
         self.latest = None          # newest valid telemetry (dict)
         self.rx_good = 0            # valid $TEL lines received
@@ -49,6 +52,12 @@ class BoardLink:
         """Sends $DIS three times (in case one line is lost)."""
         self._disarm_left = 3
 
+    def set_pitch_gains(self, kp, ki, kd):
+        self._extra.append(protocol.build_pitch_gains(kp, ki, kd))
+
+    def set_yaw_gains(self, kp, ki, kd):
+        self._extra.append(protocol.build_yaw_gains(kp, ki, kd))
+
     def _read_loop(self):
         while self._running:
             raw = self.ser.readline()
@@ -57,6 +66,15 @@ class BoardLink:
             text = raw.decode("ascii", errors="replace")
             if not text.startswith("$"):
                 continue                # the board's normal printout, not for us
+            if text.startswith("$GAIN,"):
+                gains = protocol.parse_gain(text)
+                if gains is None:
+                    self.rx_bad += 1
+                    continue
+                self.gains = gains
+                for listener in self.gain_listeners:
+                    listener(gains)
+                continue
             tel = protocol.parse_tel(text)
             if tel is None:
                 self.rx_bad += 1
@@ -72,6 +90,8 @@ class BoardLink:
             if self._disarm_left > 0:       # disarm goes out even when "stopped"
                 self.ser.write(protocol.build_disarm().encode("ascii"))
                 self._disarm_left -= 1
+            while self._extra:              # gain changes etc.
+                self.ser.write(self._extra.pop(0).encode("ascii"))
             if self.sending:
                 out = protocol.build_set(self.target)
                 if self.yaw_target is not None:

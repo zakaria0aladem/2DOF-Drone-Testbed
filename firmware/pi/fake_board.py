@@ -42,6 +42,8 @@ def main():
     last_rx = None
     link_lost = 0
     bad = 0
+    gains = [6.0, 2.5, 0.85, 3.0, 0.0, 0.5]     # pitch kp ki kd, yaw kp ki kd
+    next_gain = t0
     buf = b""
     next_tel = t0
 
@@ -70,6 +72,12 @@ def main():
                 target = max(-35.0, min(35.0, float(parts[1])))
             elif parts[0] == "YAW" and len(parts) == 2:
                 yaw_target = max(-150.0, min(150.0, float(parts[1])))
+            elif parts[0] == "GP" and len(parts) == 4:
+                gains[0:3] = [float(x) for x in parts[1:]]
+                next_gain = now
+            elif parts[0] == "GY" and len(parts) == 4:
+                gains[3:6] = [float(x) for x in parts[1:]]
+                next_gain = now
             elif parts[0] == "DIS":
                 state = 0
                 countdown_start = now + REARM_AFTER_S
@@ -89,6 +97,13 @@ def main():
         if state == 1 and now - countdown_start >= ARM_COUNTDOWN_S:
             state = 2
             countdown_start = None
+
+        if now >= next_gain:
+            next_gain = now + 1.0
+            try:
+                os.write(master, protocol.build_line("GAIN,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f" % tuple(gains)).encode("ascii"))
+            except OSError:
+                pass
 
         # --- "rig" ---
         if next_tel <= now:
