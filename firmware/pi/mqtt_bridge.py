@@ -18,6 +18,9 @@ MQTT topics (broker = mosquitto on this Pi, port 1883, websockets on 9001)
   testbed/cmd/mode     "manual" or "camera"
   testbed/cmd/log      "start" or "stop"
   testbed/cmd/disarm   anything: disarms the motors (arming stays on K1)
+  testbed/gains        gains the board is using, JSON, retained (1 Hz from the board)
+  testbed/cmd/gains    {"axis": "pitch", "kp": 6, "ki": 2.5, "kd": 0.85}
+                       or {"axis": "yaw", "kp": 3, "ki": 0.5, "kd": 0.5}
 
 Web dashboard: http://<pi address>:8080   (camera picture: /camera.mjpg,
 saved logs: /logs/)
@@ -69,6 +72,7 @@ class Bridge:
         self.mqtt.loop_start()
 
         self.link.listeners.append(self._on_tel)
+        self.link.gain_listeners.append(self._on_gains)
         threading.Thread(target=self._status_loop, daemon=True).start()
 
     # ---------- board -> MQTT ----------
@@ -80,6 +84,9 @@ class Bridge:
         if lost and not self.was_lost:
             self.event("board reports link lost: pitch target back to 0")
         self.was_lost = lost
+
+    def _on_gains(self, gains):
+        self.mqtt.publish("testbed/gains", json.dumps(gains), retain=True)
 
     def _status_loop(self):
         while True:
@@ -123,7 +130,7 @@ class Bridge:
         with self.lock:
             try:
                 self._handle(cmd, text)
-            except ValueError:
+            except (ValueError, KeyError, TypeError):
                 self.event("rejected %s command %r: not a valid value" % (cmd, text))
 
     def _handle(self, cmd, text):
@@ -158,6 +165,24 @@ class Bridge:
                 path = self.log.close()
                 self.event("saved %d rows to %s" % (self.log.rows, os.path.basename(path)))
                 self.log = None
+        elif cmd == "gains":
+            data = json.loads(text)
+            axis = data["axis"]
+            if axis not in ("pitch", "yaw"):
+                raise ValueError
+            names = ("kp", "ki", "kd")
+            values = [float(data[n]) for n in names]
+            for n, v in zip(names, values):
+                limit = protocol.GAIN_LIMITS["%s_%s" % (axis, n)]
+                if not 0.0 <= v <= limit:
+                    self.event("rejected %s %s = %g (allowed 0 to %g)" % (axis, n, v, limit))
+                    return
+            if axis == "pitch":
+                self.link.set_pitch_gains(*values)
+            else:
+                self.link.set_yaw_gains(*values)
+            self.event("%s gains sent: %s" % (axis, ", ".join(
+                "%s %g" % (n, v) for n, v in zip(names, values))))
         elif cmd == "disarm":
             self.link.disarm()
             self.mode = "manual"

@@ -186,6 +186,37 @@
             </div>
           </div>
 
+          <!-- gains -->
+          <div class="col-md-6 col-lg-4">
+            <div class="card">
+              <div class="card-header"><h3 class="card-title">Controller gains</h3>
+                <div class="card-actions text-secondary small" id="g-age">board: no data</div></div>
+              <div class="card-body">
+                <div class="subheader mb-2">Pitch PID</div>
+                <div class="row g-2 mb-1">
+                  <div class="col"><label class="form-label small mb-1">Kp (0–20)</label><input type="number" class="form-control" id="g-pkp" step="0.1" min="0" max="20"></div>
+                  <div class="col"><label class="form-label small mb-1">Ki (0–10)</label><input type="number" class="form-control" id="g-pki" step="0.1" min="0" max="10"></div>
+                  <div class="col"><label class="form-label small mb-1">Kd (0–5)</label><input type="number" class="form-control" id="g-pkd" step="0.05" min="0" max="5"></div>
+                </div>
+                <div class="d-flex align-items-center mb-3">
+                  <small class="text-secondary" id="g-pnow">board uses: –</small>
+                  <button class="btn btn-sm btn-primary ms-auto" id="g-papply">Apply pitch</button>
+                </div>
+                <div class="subheader mb-2">Yaw PID</div>
+                <div class="row g-2 mb-1">
+                  <div class="col"><label class="form-label small mb-1">Kp (0–10)</label><input type="number" class="form-control" id="g-ykp" step="0.1" min="0" max="10"></div>
+                  <div class="col"><label class="form-label small mb-1">Ki (0–5)</label><input type="number" class="form-control" id="g-yki" step="0.1" min="0" max="5"></div>
+                  <div class="col"><label class="form-label small mb-1">Kd (0–2)</label><input type="number" class="form-control" id="g-ykd" step="0.05" min="0" max="2"></div>
+                </div>
+                <div class="d-flex align-items-center">
+                  <small class="text-secondary" id="g-ynow">board uses: –</small>
+                  <button class="btn btn-sm btn-primary ms-auto" id="g-yapply">Apply yaw</button>
+                </div>
+                <small class="form-hint mt-3">Gains set here are lost when the board resets. Copy good ones into the firmware.</small>
+              </div>
+            </div>
+          </div>
+
           <!-- camera -->
           <div class="col-md-6 col-lg-4">
             <div class="card">
@@ -196,14 +227,6 @@
                   <p class="empty-subtitle text-secondary">Camera tracking needs the Pi camera.</p></div>
                 <div class="text-secondary small mt-2" id="cam-info"></div>
               </div>
-            </div>
-          </div>
-
-          <!-- events -->
-          <div class="col-md-6 col-lg-4">
-            <div class="card">
-              <div class="card-header"><h3 class="card-title">Events</h3></div>
-              <div class="list-group list-group-flush events" id="events"></div>
             </div>
           </div>
 
@@ -219,6 +242,14 @@
                 <tr><td>Serial port</td><td class="text-end" id="s-port">–</td></tr>
                 <tr><td>Log file</td><td class="text-end" id="s-log">–</td></tr>
               </table>
+            </div>
+          </div>
+
+          <!-- events -->
+          <div class="col-12">
+            <div class="card">
+              <div class="card-header"><h3 class="card-title">Events</h3></div>
+              <div class="list-group list-group-flush events" id="events"></div>
             </div>
           </div>
 
@@ -242,7 +273,7 @@ const fmt = (v, d = 1) => (v === undefined || v === null) ? "–" : Number(v).to
 
 client.on("connect", () => {
   badge("b-mqtt", "Dashboard: connected", "green");
-  client.subscribe(["testbed/tel", "testbed/status", "testbed/event"]);
+  client.subscribe(["testbed/tel", "testbed/status", "testbed/event", "testbed/gains"]);
 });
 client.on("close", () => badge("b-mqtt", "Dashboard: disconnected", "red"));
 client.on("message", (topic, payload) => {
@@ -250,6 +281,7 @@ client.on("message", (topic, payload) => {
   if (topic === "testbed/tel") onTel(msg);
   else if (topic === "testbed/status") onStatus(msg);
   else if (topic === "testbed/event") addEvent(msg.t, msg.text);
+  else if (topic === "testbed/gains") onGains(msg);
 });
 function send(cmd, value) { client.publish("testbed/cmd/" + cmd, String(value)); }
 
@@ -341,6 +373,26 @@ setInterval(() => {
   $("s-rate").textContent = telCount + " Hz"; telCount = 0;
   if (performance.now() - lastTelTime > 1000) { $("v-board").textContent = "No telemetry"; dot("d-board", "red"); }
 }, 1000);
+
+// ---------- gains ----------
+let gainsTime = 0, gainsFilled = false;
+function onGains(g) {
+  gainsTime = performance.now();
+  $("g-pnow").textContent = "board uses: " + fmt(g.pitch_kp, 2) + " / " + fmt(g.pitch_ki, 2) + " / " + fmt(g.pitch_kd, 2);
+  $("g-ynow").textContent = "board uses: " + fmt(g.yaw_kp, 2) + " / " + fmt(g.yaw_ki, 2) + " / " + fmt(g.yaw_kd, 2);
+  if (!gainsFilled) {          // fill the boxes once; after that they are yours to edit
+    gainsFilled = true;
+    [["g-pkp", g.pitch_kp], ["g-pki", g.pitch_ki], ["g-pkd", g.pitch_kd], ["g-ykp", g.yaw_kp], ["g-yki", g.yaw_ki], ["g-ykd", g.yaw_kd]]
+      .forEach(([id, v]) => $(id).value = v);
+  }
+}
+setInterval(() => {
+  $("g-age").textContent = gainsTime && performance.now() - gainsTime < 3000 ? "from the board, live" : "board: no data";
+}, 1000);
+$("g-papply").onclick = () => client.publish("testbed/cmd/gains", JSON.stringify(
+  { axis: "pitch", kp: +$("g-pkp").value, ki: +$("g-pki").value, kd: +$("g-pkd").value }));
+$("g-yapply").onclick = () => client.publish("testbed/cmd/gains", JSON.stringify(
+  { axis: "yaw", kp: +$("g-ykp").value, ki: +$("g-yki").value, kd: +$("g-ykd").value }));
 
 // ---------- events ----------
 function addEvent(t, text) {
