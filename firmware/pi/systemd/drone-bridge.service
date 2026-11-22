@@ -1,0 +1,23 @@
+# Starts mqtt_bridge.py when the Pi boots, and restarts it if it stops
+# (board unplugged, crash...). Install once on the Pi:
+#   sudo cp ~/drone/pi/systemd/drone-bridge.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now drone-bridge
+# See what it prints:   journalctl -u drone-bridge -f
+# Stop / start by hand: sudo systemctl stop drone-bridge   (start, restart)
+# If the laptop's IP changes, edit --broker below, then daemon-reload + restart.
+
+[Unit]
+Description=2-DOF testbed MQTT bridge
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=amrsaleh
+WorkingDirectory=/home/amrsaleh/drone/pi
+ExecStart=/usr/bin/python3 -u mqtt_bridge.py --broker 10.25.153.181
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
