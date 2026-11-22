@@ -25,7 +25,7 @@ class BoardLink:
 
     def __init__(self, port=None):
         self.port = port or find_port()
-        self.ser = serial.Serial(self.port, BAUD, timeout=0.1)
+        self.ser = serial.serial_for_url(self.port, BAUD, timeout=0.1)   # also socket://localhost:5333 (simulator)
         self.target = 0.0           # pitch target (deg), sent every period
         self.yaw_target = None      # None = don't send $YAW (board keeps its own)
         self._disarm_left = 0       # $DIS lines still to send

@@ -337,7 +337,7 @@ $("bk-save").onclick = () => {
 
 function onConnect() {
   badge("b-mqtt", "Dashboard: connected", "green");
-  client.subscribe(["testbed/tel", "testbed/status", "testbed/event", "testbed/gains"]);
+  client.subscribe(["testbed/tel", "testbed/status", "testbed/event", "testbed/gains", "twin/tel"]);
 }
 function onMessage(topic, payload) {
   let msg; try { msg = JSON.parse(payload.toString()); } catch (e) { return; }
@@ -345,12 +345,13 @@ function onMessage(topic, payload) {
   else if (topic === "testbed/status") onStatus(msg);
   else if (topic === "testbed/event") addEvent(msg.t, msg.text);
   else if (topic === "testbed/gains") onGains(msg);
+  else if (topic === "twin/tel") onTwin(msg);
 }
 function send(cmd, value) { client.publish("testbed/cmd/" + cmd, String(value)); }
 
 // ---------- charts ----------
 const WINDOW_S = 20;
-const BLUE = "#206bc4", ORANGE = "#f76707", GREY = "#9ba9be";
+const BLUE = "#206bc4", ORANGE = "#f76707", GREY = "#9ba9be", GREEN = "#2fb344";
 function makeChart(canvas, sets) {
   return new Chart(canvas, {
     type: "line",
@@ -368,9 +369,10 @@ function makeChart(canvas, sets) {
 Chart.defaults.font.family = "IBM Plex Sans";
 const pitchChart = makeChart($("ch-pitch"), [
   { label: "measured (IMU)", color: BLUE }, { label: "measured (encoder)", color: GREY, width: 1.5 },
-  { label: "reference", color: ORANGE, dash: [6, 4] }]);
+  { label: "reference", color: ORANGE, dash: [6, 4] }, { label: "digital twin", color: GREEN, width: 1.5 }]);
 const yawChart = makeChart($("ch-yaw"), [
-  { label: "measured (encoder)", color: BLUE }, { label: "reference", color: ORANGE, dash: [6, 4] }]);
+  { label: "measured (encoder)", color: BLUE }, { label: "reference", color: ORANGE, dash: [6, 4] },
+  { label: "digital twin", color: GREEN, width: 1.5 }]);
 const pitchRows = [], yawRows = [];
 
 function redraw() {
@@ -387,6 +389,12 @@ setInterval(redraw, 100);       // 10 redraws a second is plenty
 
 // ---------- telemetry ----------
 let telCount = 0, lastTelTime = 0;
+// digital twin: the simulator runs the same firmware and gets the same commands
+function onTwin(t) {
+  const now = performance.now() / 1000;
+  pitchRows.push([now, undefined, undefined, undefined, t.pitch]);
+  yawRows.push([now, undefined, undefined, t.enc_yaw]);
+}
 function onTel(t) {
   telCount++; lastTelTime = performance.now();
   const now = performance.now() / 1000;

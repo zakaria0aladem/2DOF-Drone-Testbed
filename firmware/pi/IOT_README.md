@@ -65,6 +65,16 @@ The Pi does not need its own mosquitto any more: `sudo systemctl disable --now m
 
 The window from step 2 prints every client that connects: that is the broker at work.
 
+## Digital twin (simulator next to the real rig)
+
+The simulator in `sim/` runs the same firmware (.elf) on the laptop. A second bridge connects it to the
+broker under the prefix `twin`. It obeys the same `testbed/cmd/...` commands as the rig, and both dashboards
+draw it as a green "digital twin" line on the pitch and yaw charts.
+
+On the laptop (two more windows):
+1. `python -m testbed_sim --gui <path to DRONE.elf>` (from the `sim` folder), then press K1 in the window to arm it
+2. `python mqtt_bridge.py --port socket://localhost:5333 --prefix twin --broker localhost --http 0 --no-camera` (from `firmware/pi`, needs `pip install paho-mqtt pyserial`)
+
 ## Testing without the rig
 
 ```
