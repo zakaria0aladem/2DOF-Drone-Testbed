@@ -77,4 +77,4 @@ From now on the bridge starts by itself every time the Pi boots.
 | `firmware/pi/camera_track.py` | `YAW_SIGN` | flip (1.0 / -1.0) if yaw tracking turns away from the ball |
 | same | `PITCH_AXIS` | `"y"` so Track both uses up/down for pitch |
 | same | `HSV_LOW`, `HSV_HIGH` | ball colour (blue now) |
-| `firmware/pi/mqtt_bridge.py` | `PITCH_LIMIT`, `YAW_LIMIT` | largest references the dashboards may send (20°, 150°) |
+| `firmware/pi/mqtt_bridge.py` | `PITCH_LIMIT`, `YAW_LIMIT` | largest references the dashboards may send (20°, 3600° = 10 turns) |

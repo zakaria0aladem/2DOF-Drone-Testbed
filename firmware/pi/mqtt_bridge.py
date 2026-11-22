@@ -47,7 +47,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WEB_DIR = os.path.join(HERE, "dashboard")
 
 PITCH_LIMIT = 20.0      # deg, largest pitch target the dashboard may ask for
-YAW_LIMIT = 150.0       # deg, keeps the cables from wrapping
+YAW_LIMIT = 3600.0      # deg (10 turns): no cable limit any more, the rig runs on battery
 BOARD_TIMEOUT = 0.5     # s without $TEL = board not connected
 STATUS_PERIOD = 0.5     # s
 

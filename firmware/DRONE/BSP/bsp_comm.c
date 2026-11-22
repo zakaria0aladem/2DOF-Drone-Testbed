@@ -29,7 +29,7 @@
 
 #define TEL_PERIOD_MS		20		/* telemetry rate: 50 Hz                    */
 #define TARGET_LIMIT_DEG	35.0f	/* largest pitch target the Pi may ask for  */
-#define YAW_LIMIT_DEG		150.0f	/* largest yaw target (keeps cables from wrapping) */
+#define YAW_LIMIT_DEG		3600.0f	/* largest yaw target: 10 turns, no cable limit since the rig runs on battery */
 #define LINK_TIMEOUT_MS		500		/* no valid command this long = link lost   */
 #define RX_BUF_SIZE			128		/* bytes waiting between interrupt and loop */
 #define LINE_MAX			48		/* longest command line accepted            */

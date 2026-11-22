@@ -71,7 +71,7 @@ def main():
             if parts[0] == "SET" and len(parts) == 2:
                 target = max(-35.0, min(35.0, float(parts[1])))
             elif parts[0] == "YAW" and len(parts) == 2:
-                yaw_target = max(-150.0, min(150.0, float(parts[1])))
+                yaw_target = max(-3600.0, min(3600.0, float(parts[1])))
             elif parts[0] == "GP" and len(parts) == 4:
                 gains[0:3] = [float(x) for x in parts[1:]]
                 next_gain = now
