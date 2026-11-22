@@ -29,7 +29,7 @@ MIN_AREA = 400          # pixels, smaller blobs are ignored as noise
 ROTATE_180 = True       # set True if the picture is upside down
 # yaw tracking (used by mqtt_bridge.py in the camera_yaw / camera_both modes)
 YAW_AXIS = "y"          # image axis that moves when the rig yaws ("x" or "y", depends on camera mounting)
-YAW_SIGN = 1.0          # flip to -1.0 if the rig turns away from the object
+YAW_SIGN = -1.0         # -1: tested on the rig 2026-11-22 (+1 turned away from the ball)
 YAW_HALF_FOV = 20.0     # deg, half the camera's view angle along YAW_AXIS (Camera Module 3: ~33 x, ~20 y)
 
 # starting colour range (HSV). Tune with the sliders, then copy the numbers here.
