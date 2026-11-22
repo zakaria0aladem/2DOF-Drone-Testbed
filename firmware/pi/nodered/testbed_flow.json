@@ -177,8 +177,8 @@
   "id": "c_pitch",
   "type": "ui-chart",
   "z": "tb_flow",
-  "x": 340,
-  "y": 60,
+  "x": 810,
+  "y": 735,
   "wires": [],
   "group": "g_pitch",
   "name": "",
@@ -237,8 +237,8 @@
   "id": "c_yaw",
   "type": "ui-chart",
   "z": "tb_flow",
-  "x": 580,
-  "y": 120,
+  "x": 810,
+  "y": 785,
   "wires": [],
   "group": "g_yaw",
   "name": "",
@@ -297,8 +297,8 @@
   "id": "t_pitch",
   "type": "ui-text",
   "z": "tb_flow",
-  "x": 820,
-  "y": 180,
+  "x": 810,
+  "y": 685,
   "wires": [],
   "group": "g_pitch",
   "order": 2,
@@ -319,8 +319,8 @@
   "id": "t_ptgt",
   "type": "ui-text",
   "z": "tb_flow",
-  "x": 100,
-  "y": 240,
+  "x": 810,
+  "y": 635,
   "wires": [],
   "group": "g_pitch",
   "order": 3,
@@ -341,8 +341,8 @@
   "id": "t_pout",
   "type": "ui-text",
   "z": "tb_flow",
-  "x": 340,
-  "y": 300,
+  "x": 810,
+  "y": 585,
   "wires": [],
   "group": "g_pitch",
   "order": 4,
@@ -363,8 +363,8 @@
   "id": "t_encp",
   "type": "ui-text",
   "z": "tb_flow",
-  "x": 580,
-  "y": 360,
+  "x": 810,
+  "y": 535,
   "wires": [],
   "group": "g_pitch",
   "order": 5,
@@ -385,8 +385,8 @@
   "id": "t_yaw",
   "type": "ui-text",
   "z": "tb_flow",
-  "x": 820,
-  "y": 420,
+  "x": 810,
+  "y": 485,
   "wires": [],
   "group": "g_yaw",
   "order": 2,
@@ -407,8 +407,8 @@
   "id": "t_ytgt",
   "type": "ui-text",
   "z": "tb_flow",
-  "x": 100,
-  "y": 480,
+  "x": 810,
+  "y": 435,
   "wires": [],
   "group": "g_yaw",
   "order": 3,
@@ -429,8 +429,8 @@
   "id": "t_yout",
   "type": "ui-text",
   "z": "tb_flow",
-  "x": 340,
-  "y": 540,
+  "x": 810,
+  "y": 385,
   "wires": [],
   "group": "g_yaw",
   "order": 4,
@@ -451,8 +451,8 @@
   "id": "t_yerr",
   "type": "ui-text",
   "z": "tb_flow",
-  "x": 580,
-  "y": 600,
+  "x": 810,
+  "y": 335,
   "wires": [],
   "group": "g_yaw",
   "order": 5,
@@ -473,8 +473,8 @@
   "id": "ga_m2",
   "type": "ui-gauge",
   "z": "tb_flow",
-  "x": 820,
-  "y": 660,
+  "x": 810,
+  "y": 285,
   "wires": [],
   "group": "g_motor",
   "name": "",
@@ -519,8 +519,8 @@
   "id": "ga_m1",
   "type": "ui-gauge",
   "z": "tb_flow",
-  "x": 100,
-  "y": 720,
+  "x": 810,
+  "y": 235,
   "wires": [],
   "group": "g_motor",
   "name": "",
@@ -565,8 +565,8 @@
   "id": "ga_m3",
   "type": "ui-gauge",
   "z": "tb_flow",
-  "x": 340,
-  "y": 780,
+  "x": 810,
+  "y": 185,
   "wires": [],
   "group": "g_motor",
   "name": "",
@@ -611,8 +611,8 @@
   "id": "ga_m4",
   "type": "ui-gauge",
   "z": "tb_flow",
-  "x": 580,
-  "y": 840,
+  "x": 810,
+  "y": 135,
   "wires": [],
   "group": "g_motor",
   "name": "",
@@ -657,8 +657,8 @@
   "id": "t_link",
   "type": "ui-text",
   "z": "tb_flow",
-  "x": 820,
-  "y": 900,
+  "x": 810,
+  "y": 85,
   "wires": [],
   "group": "g_status",
   "order": 5,
@@ -679,8 +679,8 @@
   "id": "f_tel",
   "type": "function",
   "z": "tb_flow",
-  "x": 100,
-  "y": 960,
+  "x": 490,
+  "y": 406,
   "wires": [
    [
     "c_pitch"
@@ -741,8 +741,8 @@
   "id": "in_tel",
   "type": "mqtt in",
   "z": "tb_flow",
-  "x": 340,
-  "y": 1020,
+  "x": 170,
+  "y": 410,
   "wires": [
    [
     "f_tel"
@@ -762,8 +762,8 @@
   "id": "t_board",
   "type": "ui-text",
   "z": "tb_flow",
-  "x": 580,
-  "y": 1080,
+  "x": 810,
+  "y": 1045,
   "wires": [],
   "group": "g_status",
   "order": 1,
@@ -784,8 +784,8 @@
   "id": "t_state",
   "type": "ui-text",
   "z": "tb_flow",
-  "x": 820,
-  "y": 1140,
+  "x": 810,
+  "y": 1195,
   "wires": [],
   "group": "g_status",
   "order": 2,
@@ -806,8 +806,8 @@
   "id": "t_mode",
   "type": "ui-text",
   "z": "tb_flow",
-  "x": 100,
-  "y": 1200,
+  "x": 810,
+  "y": 1145,
   "wires": [],
   "group": "g_status",
   "order": 3,
@@ -828,8 +828,8 @@
   "id": "t_log",
   "type": "ui-text",
   "z": "tb_flow",
-  "x": 340,
-  "y": 1260,
+  "x": 810,
+  "y": 1095,
   "wires": [],
   "group": "g_status",
   "order": 4,
@@ -850,8 +850,8 @@
   "id": "t_event",
   "type": "ui-text",
   "z": "tb_flow",
-  "x": 580,
-  "y": 1320,
+  "x": 810,
+  "y": 1505,
   "wires": [],
   "group": "g_status",
   "order": 6,
@@ -872,8 +872,8 @@
   "id": "f_status",
   "type": "function",
   "z": "tb_flow",
-  "x": 820,
-  "y": 1380,
+  "x": 490,
+  "y": 1120,
   "wires": [
    [
     "t_board"
@@ -901,8 +901,8 @@
   "id": "in_status",
   "type": "mqtt in",
   "z": "tb_flow",
-  "x": 100,
-  "y": 1440,
+  "x": 170,
+  "y": 1120,
   "wires": [
    [
     "f_status"
@@ -922,8 +922,8 @@
   "id": "f_event",
   "type": "function",
   "z": "tb_flow",
-  "x": 340,
-  "y": 1500,
+  "x": 490,
+  "y": 1505,
   "wires": [
    [
     "t_event"
@@ -942,8 +942,8 @@
   "id": "in_event",
   "type": "mqtt in",
   "z": "tb_flow",
-  "x": 580,
-  "y": 1560,
+  "x": 170,
+  "y": 1505,
   "wires": [
    [
     "f_event"
@@ -963,8 +963,8 @@
   "id": "o_pitch",
   "type": "mqtt out",
   "z": "tb_flow",
-  "x": 820,
-  "y": 1620,
+  "x": 810,
+  "y": 915,
   "wires": [],
   "name": "testbed/cmd/pitch",
   "topic": "testbed/cmd/pitch",
@@ -981,8 +981,8 @@
   "id": "o_yaw",
   "type": "mqtt out",
   "z": "tb_flow",
-  "x": 100,
-  "y": 1680,
+  "x": 490,
+  "y": 1840,
   "wires": [],
   "name": "testbed/cmd/yaw",
   "topic": "testbed/cmd/yaw",
@@ -999,8 +999,8 @@
   "id": "o_mode",
   "type": "mqtt out",
   "z": "tb_flow",
-  "x": 340,
-  "y": 1740,
+  "x": 490,
+  "y": 1995,
   "wires": [],
   "name": "testbed/cmd/mode",
   "topic": "testbed/cmd/mode",
@@ -1017,8 +1017,8 @@
   "id": "o_log",
   "type": "mqtt out",
   "z": "tb_flow",
-  "x": 580,
-  "y": 1800,
+  "x": 490,
+  "y": 2125,
   "wires": [],
   "name": "testbed/cmd/log",
   "topic": "testbed/cmd/log",
@@ -1035,8 +1035,8 @@
   "id": "o_dis",
   "type": "mqtt out",
   "z": "tb_flow",
-  "x": 820,
-  "y": 1860,
+  "x": 490,
+  "y": 2255,
   "wires": [],
   "name": "testbed/cmd/disarm",
   "topic": "testbed/cmd/disarm",
@@ -1053,8 +1053,8 @@
   "id": "s_pitch",
   "type": "ui-slider",
   "z": "tb_flow",
-  "x": 100,
-  "y": 1920,
+  "x": 490,
+  "y": 915,
   "wires": [
    [
     "o_pitch"
@@ -1088,8 +1088,8 @@
   "id": "n_yaw",
   "type": "ui-number-input",
   "z": "tb_flow",
-  "x": 340,
-  "y": 1980,
+  "x": 170,
+  "y": 1815,
   "wires": [
    [
     "o_yaw"
@@ -1121,8 +1121,8 @@
   "id": "bg_yaw",
   "type": "ui-button-group",
   "z": "tb_flow",
-  "x": 580,
-  "y": 2040,
+  "x": 170,
+  "y": 1865,
   "wires": [
    [
     "o_yaw"
@@ -1182,8 +1182,8 @@
   "id": "bg_mode",
   "type": "ui-button-group",
   "z": "tb_flow",
-  "x": 820,
-  "y": 2100,
+  "x": 170,
+  "y": 1995,
   "wires": [
    [
     "o_mode"
@@ -1222,8 +1222,8 @@
   "id": "bg_log",
   "type": "ui-button-group",
   "z": "tb_flow",
-  "x": 100,
-  "y": 2160,
+  "x": 170,
+  "y": 2125,
   "wires": [
    [
     "o_log"
@@ -1262,8 +1262,8 @@
   "id": "b_dis",
   "type": "ui-button",
   "z": "tb_flow",
-  "x": 340,
-  "y": 2220,
+  "x": 170,
+  "y": 2255,
   "wires": [
    [
     "o_dis"
@@ -1314,8 +1314,8 @@
   "topic": "",
   "payload": "0",
   "payloadType": "num",
-  "x": 120,
-  "y": 1400,
+  "x": 170,
+  "y": 915,
   "wires": [
    [
     "s_pitch"
@@ -1354,8 +1354,8 @@
   "color": "#1d2421",
   "wrapText": false,
   "className": "",
-  "x": 900,
-  "y": 1540,
+  "x": 810,
+  "y": 1325,
   "wires": []
  },
  {
@@ -1376,8 +1376,8 @@
   "color": "#1d2421",
   "wrapText": false,
   "className": "",
-  "x": 900,
-  "y": 1580,
+  "x": 810,
+  "y": 1375,
   "wires": []
  },
  {
@@ -1392,8 +1392,8 @@
   "initialize": "",
   "finalize": "",
   "libs": [],
-  "x": 650,
-  "y": 1540,
+  "x": 490,
+  "y": 1350,
   "wires": [
    [
     "t_gp"
@@ -1416,8 +1416,8 @@
   "rap": true,
   "rh": 0,
   "inputs": 0,
-  "x": 400,
-  "y": 1540,
+  "x": 170,
+  "y": 1350,
   "wires": [
    [
     "f_gains"
@@ -1472,8 +1472,8 @@
   "className": "",
   "passthru": false,
   "dropdownOptions": [],
-  "x": 400,
-  "y": 1720,
+  "x": 170,
+  "y": 1635,
   "wires": [
    [
     "f_gp"
@@ -1528,8 +1528,8 @@
   "className": "",
   "passthru": false,
   "dropdownOptions": [],
-  "x": 400,
-  "y": 1760,
+  "x": 170,
+  "y": 1685,
   "wires": [
    [
     "f_gy"
@@ -1548,8 +1548,8 @@
   "initialize": "",
   "finalize": "",
   "libs": [],
-  "x": 650,
-  "y": 1720,
+  "x": 490,
+  "y": 1635,
   "wires": [
    [
     "o_gains"
@@ -1568,8 +1568,8 @@
   "initialize": "",
   "finalize": "",
   "libs": [],
-  "x": 650,
-  "y": 1760,
+  "x": 490,
+  "y": 1685,
   "wires": [
    [
     "o_gains"
@@ -1590,8 +1590,8 @@
   "correl": "",
   "expiry": "",
   "broker": "broker",
-  "x": 900,
-  "y": 1740,
+  "x": 810,
+  "y": 1660,
   "wires": []
  },
  {
@@ -1626,8 +1626,8 @@
   "resendOnRefresh": true,
   "templateScope": "local",
   "className": "",
-  "x": 200,
-  "y": 2300,
+  "x": 170,
+  "y": 2385,
   "wires": [
    []
   ]
@@ -1636,8 +1636,8 @@
   "id": "in_twin",
   "type": "mqtt in",
   "z": "tb_flow",
-  "x": 340,
-  "y": 1080,
+  "x": 170,
+  "y": 460,
   "wires": [
    [
     "f_twin"
@@ -1657,8 +1657,8 @@
   "id": "f_twin",
   "type": "function",
   "z": "tb_flow",
-  "x": 560,
-  "y": 1080,
+  "x": 490,
+  "y": 548,
   "wires": [
    [
     "c_pitch"
@@ -1674,5 +1674,115 @@
   "initialize": "",
   "finalize": "",
   "libs": []
+ },
+ {
+  "id": "cm_00",
+  "type": "comment",
+  "z": "tb_flow",
+  "name": "1  Telemetry in (rig + digital twin) -> charts, values, motor gauges",
+  "info": "",
+  "x": 264,
+  "y": 40,
+  "wires": []
+ },
+ {
+  "id": "cm_01",
+  "type": "comment",
+  "z": "tb_flow",
+  "name": "2  Pitch reference slider -> testbed/cmd/pitch",
+  "info": "",
+  "x": 191,
+  "y": 870,
+  "wires": []
+ },
+ {
+  "id": "cm_02",
+  "type": "comment",
+  "z": "tb_flow",
+  "name": "3  Status in -> status card",
+  "info": "",
+  "x": 129,
+  "y": 1000,
+  "wires": []
+ },
+ {
+  "id": "cm_03",
+  "type": "comment",
+  "z": "tb_flow",
+  "name": "4  Gains in use",
+  "info": "",
+  "x": 89,
+  "y": 1280,
+  "wires": []
+ },
+ {
+  "id": "cm_04",
+  "type": "comment",
+  "z": "tb_flow",
+  "name": "5  Events in",
+  "info": "",
+  "x": 79,
+  "y": 1460,
+  "wires": []
+ },
+ {
+  "id": "cm_05",
+  "type": "comment",
+  "z": "tb_flow",
+  "name": "6  Gain tuning forms -> testbed/cmd/gains",
+  "info": "",
+  "x": 175,
+  "y": 1590,
+  "wires": []
+ },
+ {
+  "id": "cm_06",
+  "type": "comment",
+  "z": "tb_flow",
+  "name": "7  Yaw reference -> testbed/cmd/yaw",
+  "info": "",
+  "x": 155,
+  "y": 1770,
+  "wires": []
+ },
+ {
+  "id": "cm_07",
+  "type": "comment",
+  "z": "tb_flow",
+  "name": "8  Operating mode -> testbed/cmd/mode",
+  "info": "",
+  "x": 162,
+  "y": 1950,
+  "wires": []
+ },
+ {
+  "id": "cm_08",
+  "type": "comment",
+  "z": "tb_flow",
+  "name": "9  Data logging -> testbed/cmd/log",
+  "info": "",
+  "x": 152,
+  "y": 2080,
+  "wires": []
+ },
+ {
+  "id": "cm_09",
+  "type": "comment",
+  "z": "tb_flow",
+  "name": "10  Disarm -> testbed/cmd/disarm",
+  "info": "",
+  "x": 145,
+  "y": 2210,
+  "wires": []
+ },
+ {
+  "id": "cm_10",
+  "type": "comment",
+  "z": "tb_flow",
+  "name": "11  Camera picture from the Pi",
+  "info": "",
+  "x": 139,
+  "y": 2340,
+  "wires": []
  }
 ]
