@@ -15,7 +15,7 @@
 #define YAW_KP_START 3.0f
 #define YAW_KD_START 0.5f
 #define YAW_KI_START 0.0f
-#define YAW_LIMIT 75.0f
+#define YAW_LIMIT 85.0f
 #define YAW_ENABLE 1
 #define YAW_I_LIMIT 30.0f
 #define YAW_DT_S 0.002f
