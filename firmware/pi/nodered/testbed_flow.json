@@ -745,7 +745,8 @@
   "y": 410,
   "wires": [
    [
-    "f_tel"
+    "f_tel",
+    "f_tw_rig"
    ]
   ],
   "name": "testbed/tel",
@@ -1654,7 +1655,8 @@
   "y": 460,
   "wires": [
    [
-    "f_twin"
+    "f_twin",
+    "f_tw_twin"
    ]
   ],
   "name": "twin/tel",
@@ -1798,5 +1800,115 @@
   "x": 139,
   "y": 2340,
   "wires": []
+ },
+ {
+  "id": "g_twin",
+  "type": "ui-group",
+  "name": "Digital twin (drag to move the rig)",
+  "page": "ui_page",
+  "width": 6,
+  "height": 1,
+  "order": 8,
+  "showTitle": true,
+  "className": "",
+  "visible": "true",
+  "disabled": "false",
+  "groupType": "default"
+ },
+ {
+  "id": "cm_11",
+  "type": "comment",
+  "z": "tb_flow",
+  "name": "12  Rig model <-> rig (drag = reference, arms = measured)",
+  "info": "",
+  "x": 230,
+  "y": 2470,
+  "wires": []
+ },
+ {
+  "id": "f_tw_rig",
+  "type": "function",
+  "z": "tb_flow",
+  "x": 490,
+  "y": 2510,
+  "wires": [
+   [
+    "tw_view"
+   ]
+  ],
+  "name": "rig pose (20 Hz)",
+  "outputs": 1,
+  "func": "const now = Date.now();\nif (now - (context.get(\"last\") || 0) < 50) return null;\ncontext.set(\"last\", now);\nmsg.topic = \"rig\";\nreturn msg;",
+  "noerr": 0,
+  "initialize": "",
+  "finalize": "",
+  "libs": []
+ },
+ {
+  "id": "f_tw_twin",
+  "type": "function",
+  "z": "tb_flow",
+  "x": 490,
+  "y": 2560,
+  "wires": [
+   [
+    "tw_view"
+   ]
+  ],
+  "name": "twin pose (20 Hz)",
+  "outputs": 1,
+  "func": "const now = Date.now();\nif (now - (context.get(\"last\") || 0) < 50) return null;\ncontext.set(\"last\", now);\nmsg.topic = \"twin\";\nreturn msg;",
+  "noerr": 0,
+  "initialize": "",
+  "finalize": "",
+  "libs": []
+ },
+ {
+  "id": "tw_view",
+  "type": "ui-template",
+  "z": "tb_flow",
+  "group": "g_twin",
+  "page": "",
+  "ui": "",
+  "name": "Rig model",
+  "order": 1,
+  "width": 0,
+  "height": 0,
+  "head": "",
+  "format": "<template>\n  <div class=\"tw\">\n    <div class=\"tw-row\">\n      <div class=\"tw-view\">\n        <div class=\"tw-t\">Pitch (side view)</div>\n        <svg viewBox=\"-110 -80 220 160\" @pointerdown=\"down('pitch',$event)\" @pointermove=\"move($event)\" @pointerup=\"up\" @pointerleave=\"up\" ref=\"sp\">\n          <line x1=\"-100\" y1=\"60\" x2=\"100\" y2=\"60\" class=\"base\"/>\n          <line x1=\"0\" y1=\"60\" x2=\"0\" y2=\"0\" class=\"post\"/>\n          <g :transform=\"'rotate(' + (-pitch) + ')'\"><line x1=\"-80\" y1=\"0\" x2=\"80\" y2=\"0\" class=\"real\"/>\n            <circle cx=\"-80\" cy=\"0\" r=\"9\" class=\"motor\"/><circle cx=\"80\" cy=\"0\" r=\"9\" class=\"motor\"/></g>\n          <g v-if=\"twin\" :transform=\"'rotate(' + (-twin.pitch) + ')'\"><line x1=\"-80\" y1=\"0\" x2=\"80\" y2=\"0\" class=\"twin\"/></g>\n          <g :transform=\"'rotate(' + (-pTarget) + ')'\"><line x1=\"-90\" y1=\"0\" x2=\"90\" y2=\"0\" class=\"ref\"/>\n            <circle cx=\"90\" cy=\"0\" r=\"8\" class=\"handle\"/></g>\n          <circle r=\"5\" class=\"pivot\"/>\n        </svg>\n        <div class=\"tw-n\">rig {{ pitch.toFixed(1) }}° · reference {{ pTarget.toFixed(1) }}°<span v-if=\"twin\"> · twin {{ twin.pitch.toFixed(1) }}°</span></div>\n      </div>\n      <div class=\"tw-view\">\n        <div class=\"tw-t\">Yaw (top view)</div>\n        <svg viewBox=\"-110 -110 220 220\" @pointerdown=\"down('yaw',$event)\" @pointermove=\"move($event)\" @pointerup=\"up\" @pointerleave=\"up\" ref=\"sy\">\n          <circle r=\"95\" class=\"dial\"/>\n          <path d=\"M 0 0 L 47.5 82.3 A 95 95 0 0 1 -47.5 82.3 Z\" class=\"limit\"/>\n          <g :transform=\"'rotate(' + yaw + ')'\"><line x1=\"0\" y1=\"0\" x2=\"0\" y2=\"-80\" class=\"real\"/>\n            <line x1=\"-55\" y1=\"-80\" x2=\"55\" y2=\"-80\" class=\"real\"/></g>\n          <g v-if=\"twin\" :transform=\"'rotate(' + twin.yaw + ')'\"><line x1=\"0\" y1=\"0\" x2=\"0\" y2=\"-80\" class=\"twin\"/></g>\n          <g :transform=\"'rotate(' + yTarget + ')'\"><line x1=\"0\" y1=\"0\" x2=\"0\" y2=\"-95\" class=\"ref\"/>\n            <circle cx=\"0\" cy=\"-95\" r=\"8\" class=\"handle\"/></g>\n          <circle r=\"6\" class=\"pivot\"/>\n        </svg>\n        <div class=\"tw-n\">rig {{ yaw.toFixed(1) }}° · reference {{ yTarget.toFixed(1) }}°<span v-if=\"twin\"> · twin {{ twin.yaw.toFixed(1) }}°</span></div>\n      </div>\n    </div>\n    <div class=\"tw-k\"><span class=\"k real\"></span>real rig (moves when the rig moves) <span class=\"k ref\"></span>reference (drag the dot) <span class=\"k twin\"></span>digital twin (simulator)</div>\n  </div>\n</template>\n<script>\nexport default {\n  data() { return { pitch: 0, yaw: 0, pTarget: 0, yTarget: 0, twin: null, drag: null, lastSend: 0 } },\n  watch: {\n    msg(m) {\n      if (!m || !m.payload) return;\n      const t = m.payload;\n      if (m.topic === \"twin\") { this.twin = { pitch: t.pitch || 0, yaw: t.enc_yaw || 0 }; return; }\n      this.pitch = t.pitch || 0; this.yaw = t.enc_yaw || 0;\n      if (this.drag !== \"pitch\" && t.target !== undefined) this.pTarget = t.target;      // follow the rig's reference\n      if (this.drag !== \"yaw\" && t.yaw_target !== undefined) this.yTarget = t.yaw_target;\n    }\n  },\n  methods: {\n    angle(e, svg) {             // pointer angle around the pivot, in degrees\n      const r = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal;\n      const x = (e.clientX - r.left) / r.width * vb.width + vb.x, y = (e.clientY - r.top) / r.height * vb.height + vb.y;\n      return Math.atan2(y, x) * 180 / Math.PI;\n    },\n    down(axis, e) { this.drag = axis; this.move(e); },\n    move(e) {\n      if (!this.drag) return;\n      if (this.drag === \"pitch\") {\n        let a = -this.angle(e, this.$refs.sp); if (a > 90) a -= 180; if (a < -90) a += 180;\n        this.pTarget = Math.max(-20, Math.min(20, Math.round(a)));\n      } else {\n        let a = this.angle(e, this.$refs.sy) + 90; if (a > 180) a -= 360;\n        this.yTarget = Math.max(-150, Math.min(150, Math.round(a)));\n      }\n      const now = Date.now();\n      if (now - this.lastSend > 150) { this.lastSend = now; this.push(); }   // live while dragging, ~7 per second\n    },\n    up() { if (this.drag) { this.push(); this.drag = null; } },\n    push() { this.send(this.drag === \"pitch\" ? { topic: \"pitch\", payload: String(this.pTarget) } : { topic: \"yaw\", payload: String(this.yTarget) }); }\n  }\n}\n</script>\n<style>\n.tw-row { display: flex; flex-wrap: wrap; gap: 12px; }\n.tw-view { flex: 1 1 220px; min-width: 0; }\n.tw-view svg { width: 100%; touch-action: none; cursor: grab; }\n.tw-t { font-weight: 600; font-size: 14px; }\n.tw-n, .tw-k { font-size: 12px; opacity: 0.75; font-variant-numeric: tabular-nums; }\n.tw-k .k { display: inline-block; width: 18px; height: 4px; margin: 0 4px 2px 10px; vertical-align: middle; }\n.base, .post { stroke: #9aa5a0; stroke-width: 4; }\n.real { stroke: #206bc4; stroke-width: 7; stroke-linecap: round; }\n.k.real { background: #206bc4; } .k.ref { background: #f76707; } .k.twin { background: #2fb344; }\n.twin { stroke: #2fb344; stroke-width: 3; stroke-dasharray: 6 4; }\n.ref { stroke: #f76707; stroke-width: 2; stroke-dasharray: 5 4; }\n.handle { fill: #f76707; cursor: grab; }\n.motor { fill: #206bc4; opacity: 0.35; }\n.pivot { fill: #1d2421; }\n.dial { fill: none; stroke: #dfe4e1; stroke-width: 2; }\n.limit { fill: #d63939; opacity: 0.12; }\n</style>",
+  "storeOutMessages": false,
+  "passthru": false,
+  "resendOnRefresh": false,
+  "templateScope": "local",
+  "className": "",
+  "x": 810,
+  "y": 2535,
+  "wires": [
+   [
+    "f_tw_cmd"
+   ]
+  ]
+ },
+ {
+  "id": "f_tw_cmd",
+  "type": "function",
+  "z": "tb_flow",
+  "x": 1130,
+  "y": 2535,
+  "wires": [
+   [
+    "o_pitch"
+   ],
+   [
+    "o_yaw"
+   ]
+  ],
+  "name": "dragged reference",
+  "outputs": 2,
+  "func": "// topic says which axis was dragged; payload is the new reference in degrees\nreturn msg.topic === \"pitch\" ? [msg, null] : [null, msg];",
+  "noerr": 0,
+  "initialize": "",
+  "finalize": "",
+  "libs": []
  }
 ]
