@@ -889,7 +889,7 @@
    ]
   ],
   "name": "split status",
-  "func": "const s = msg.payload;          // JSON object from testbed/status (2 per second)\nif (s.bridge !== \"online\") return [{payload: \"bridge OFFLINE\"}, null, null, null];\nreturn [\n    {payload: s.board_connected ? \"connected\" : \"NOT responding\"},\n    {payload: s.state},\n    {payload: s.mode === \"camera\" ? \"CAMERA TRACKING\" : \"MANUAL\"},\n    {payload: s.logging ? (\"recording \" + s.log_file + \" (\" + s.log_rows + \" rows)\") : \"off\"}\n];",
+  "func": "const s = msg.payload;          // JSON object from testbed/status (2 per second)\nif (s.bridge !== \"online\") return [{payload: \"bridge OFFLINE\"}, null, null, null];\nreturn [\n    {payload: s.board_connected ? \"connected\" : \"NOT responding\"},\n    {payload: s.state},\n    {payload: ({manual: \"MANUAL\", camera: \"CAMERA: PITCH\", camera_yaw: \"CAMERA: YAW\", camera_both: \"CAMERA: PITCH + YAW\"})[s.mode] || s.mode},\n    {payload: s.logging ? (\"recording \" + s.log_file + \" (\" + s.log_rows + \" rows)\") : \"off\"}\n];",
   "outputs": 4,
   "timeout": 0,
   "noerr": 0,
@@ -1208,9 +1208,23 @@
     "color": "#2f9e5b"
    },
    {
-    "label": "Camera tracking",
+    "label": "Track pitch",
     "icon": "",
     "value": "camera",
+    "valueType": "str",
+    "color": "#2f9e5b"
+   },
+   {
+    "label": "Track yaw",
+    "icon": "",
+    "value": "camera_yaw",
+    "valueType": "str",
+    "color": "#2f9e5b"
+   },
+   {
+    "label": "Track both",
+    "icon": "",
+    "value": "camera_both",
     "valueType": "str",
     "color": "#2f9e5b"
    }

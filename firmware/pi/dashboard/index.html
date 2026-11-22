@@ -164,7 +164,7 @@
                 <div class="mb-3">
                   <label class="form-label">Operating mode</label>
                   <div class="btn-group w-100">
-                    <button class="btn" id="m-manual">Manual</button><button class="btn" id="m-camera">Camera tracking</button>
+                    <button class="btn" id="m-manual">Manual</button><button class="btn" id="m-camera">Track pitch</button><button class="btn" id="m-camera_yaw">Track yaw</button><button class="btn" id="m-camera_both">Track both</button>
                   </div>
                 </div>
                 <div>
@@ -423,10 +423,10 @@ function onStatus(s) {
   $("v-board").textContent = s.board_connected ? "Connected" : "Not responding";
   dot("d-board", s.board_connected ? "green" : "red");
   $("v-state").textContent = s.state; dot("d-state", STATE_COLOR[s.state]);
-  $("v-mode").textContent = s.mode === "camera" ? "Camera tracking" : "Manual";
-  $("m-manual").className = "btn" + (s.mode === "manual" ? " btn-primary" : "");
-  $("m-camera").className = "btn" + (s.mode === "camera" ? " btn-primary" : "");
-  $("pitch-hint").textContent = s.mode === "camera" ? "Camera mode: the camera sets the pitch reference." : "";
+  $("v-mode").textContent = MODE_NAMES[s.mode] || s.mode;
+  for (const m in MODE_NAMES) $("m-" + m).className = "btn" + (s.mode === m ? " btn-primary" : "");
+  $("pitch-hint").textContent = ["camera", "camera_both"].includes(s.mode) ? "Camera mode: the camera sets the pitch reference." :
+    s.mode === "camera_yaw" ? "Camera mode: the camera sets the yaw reference." : "";
   $("v-log").textContent = s.logging ? "recording · " + s.log_rows + " rows" : "off";
   $("v-log").className = "badge " + (s.logging ? "bg-red-lt" : "bg-secondary-lt");
   $("s-rx").textContent = s.rx_good + " / " + s.rx_bad;
@@ -485,8 +485,8 @@ document.querySelectorAll("[data-pitch]").forEach(b => b.onclick = () => {
   $("pitch-n").value = $("pitch-r").value = b.dataset.pitch; send("pitch", b.dataset.pitch); });
 $("yaw-send").onclick = () => send("yaw", $("yaw-n").value);
 document.querySelectorAll("[data-yaw]").forEach(b => b.onclick = () => { $("yaw-n").value = b.dataset.yaw; send("yaw", b.dataset.yaw); });
-$("m-manual").onclick = () => send("mode", "manual");
-$("m-camera").onclick = () => send("mode", "camera");
+const MODE_NAMES = { manual: "Manual", camera: "Camera: pitch", camera_yaw: "Camera: yaw", camera_both: "Camera: pitch + yaw" };
+for (const m in MODE_NAMES) $("m-" + m).onclick = () => send("mode", m);
 $("log-start").onclick = () => send("log", "start");
 $("log-stop").onclick = () => send("log", "stop");
 $("disarm").onclick = () => send("disarm", 1);

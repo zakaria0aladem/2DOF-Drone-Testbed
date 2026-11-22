@@ -15,7 +15,7 @@ MQTT topics (broker = mosquitto on this Pi, port 1883, websockets on 9001)
   testbed/event        short text messages ("mode -> camera", "link lost"...)
   testbed/cmd/pitch    "10.5"   new pitch target in deg (manual mode only)
   testbed/cmd/yaw      "-45"    new yaw target in deg
-  testbed/cmd/mode     "manual" or "camera"
+  testbed/cmd/mode     "manual", "camera" (track pitch), "camera_yaw" or "camera_both"
   testbed/cmd/log      "start" or "stop"
   testbed/cmd/disarm   anything: disarms the motors (arming stays on K1)
   testbed/gains        gains the board is using, JSON, retained (1 Hz from the board)
@@ -56,7 +56,7 @@ class Bridge:
     def __init__(self, args):
         self.link = BoardLink(args.port)
         self.link.set_target(0.0)
-        self.mode = "manual"            # "manual" or "camera"
+        self.mode = "manual"            # "manual" or one of CAMERA_MODES
         self.manual_pitch = 0.0
         self.log = None
         self.lock = threading.Lock()
@@ -142,7 +142,7 @@ class Bridge:
         if cmd == "pitch":
             value = clamp_number(text, PITCH_LIMIT)
             self.manual_pitch = value
-            if self.mode == "manual":
+            if "pitch" not in tracked_axes(self.mode):
                 self.link.set_target(value)
                 self.event("pitch target %.1f" % value)
             else:
@@ -152,9 +152,9 @@ class Bridge:
             self.link.set_yaw(value)
             self.event("yaw target %.1f" % value)
         elif cmd == "mode":
-            if text not in ("manual", "camera"):
+            if text != "manual" and text not in CAMERA_MODES:
                 raise ValueError
-            if text == "camera" and not (self.camera and self.camera.available):
+            if text != "manual" and not (self.camera and self.camera.available):
                 self.event("camera mode not available (no camera)")
                 return
             self.mode = text
@@ -214,7 +214,8 @@ class Bridge:
 
 class CameraWorker:
     """Runs the colour tracking from camera_track.py without any windows.
-    In camera mode the tracker's target becomes the pitch target."""
+    Camera modes: the tracker's target becomes the pitch target and/or the
+    object's bearing becomes the yaw target (see CAMERA_MODES)."""
 
     def __init__(self, bridge):
         self.bridge = bridge
@@ -232,6 +233,7 @@ class CameraWorker:
             print("Camera not available:", err)
             return
         self.tracker = ct.Tracker()
+        self.cam_yaw, self.yaw_t = 0.0, None
         self.available = True
         threading.Thread(target=self._loop, daemon=True).start()
 
@@ -245,10 +247,12 @@ class CameraWorker:
                 time.sleep(0.1)
                 continue
             mask, obj = ct.find_object(frame, low, high)
-            self.tracker.active = self.bridge.mode == "camera"
+            axes = tracked_axes(self.bridge.mode)
+            self.tracker.active = "pitch" in axes
             target = self.tracker.update(obj)
             if self.tracker.active:
                 self.bridge.link.set_target(round(target, 1))
+            self._track_yaw(obj, "yaw" in axes)
             now = time.time()
             self.fps = 0.9 * self.fps + 0.1 / max(now - last, 1e-3)
             last = now
@@ -256,6 +260,24 @@ class CameraWorker:
             ok, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
             if ok:
                 self.jpeg = buf.tobytes()
+
+    def _track_yaw(self, obj, active):
+        """Point the rig at the object: yaw target = measured yaw + object's angle in the picture."""
+        ct, link = self.ct, self.bridge.link
+        if obj is not None:
+            pos, size = (obj[0], ct.WIDTH) if ct.YAW_AXIS == "x" else (obj[1], ct.HEIGHT)
+            self.cam_yaw = (pos - size / 2) / (size / 2)        # -1 .. +1
+        tel = link.latest
+        if not active or obj is None or tel is None:
+            self.yaw_t = None                   # object lost: keep the last yaw target
+            return
+        off = self.cam_yaw if abs(self.cam_yaw) > ct.DEADBAND else 0.0
+        want = tel["enc_yaw"] + ct.YAW_SIGN * off * ct.YAW_HALF_FOV
+        if self.yaw_t is None:
+            self.yaw_t = link.yaw_target if link.yaw_target is not None else tel["enc_yaw"]
+        self.yaw_t += (want - self.yaw_t) * ct.SMOOTH
+        self.yaw_t = max(-YAW_LIMIT, min(YAW_LIMIT, self.yaw_t))
+        link.set_yaw(round(self.yaw_t, 1))
 
     def info(self):
         if not self.available:
@@ -268,6 +290,13 @@ class CameraWorker:
         if not self.available:
             return {}
         return {"cam_x": round(self.tracker.cam_x, 3), "found": int(self.tracker.found)}
+
+
+CAMERA_MODES = {"camera": ("pitch",), "camera_yaw": ("yaw",), "camera_both": ("pitch", "yaw")}
+
+
+def tracked_axes(mode):
+    return CAMERA_MODES.get(mode, ())
 
 
 def board_state(tel):
