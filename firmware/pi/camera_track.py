@@ -28,9 +28,10 @@ LOST_TIME = 0.5         # s without the object -> target goes back to 0
 MIN_AREA = 400          # pixels, smaller blobs are ignored as noise
 ROTATE_180 = True       # set True if the picture is upside down
 # yaw tracking (used by mqtt_bridge.py in the camera_yaw / camera_both modes)
-YAW_AXIS = "y"          # image axis that moves when the rig yaws ("x" or "y", depends on camera mounting)
-YAW_SIGN = -1.0         # -1: tested on the rig 2026-11-22 (+1 turned away from the ball)
-YAW_HALF_FOV = 20.0     # deg, half the camera's view angle along YAW_AXIS (Camera Module 3: ~33 x, ~20 y)
+YAW_AXIS = "x"          # image axis that moves when the rig yaws (camera on the drone: left/right = x)
+YAW_SIGN = -1.0         # ball on the left (x < 0) -> yaw target up (CCW). Flip if it turns away
+YAW_HALF_FOV = 33.0     # deg, half the camera's view angle along YAW_AXIS (Camera Module 3: ~33 x, ~20 y)
+PITCH_AXIS = "x"        # image axis used for pitch tracking; set "y" so Track both uses up/down for pitch
 
 # starting colour range (HSV). Tune with the sliders, then copy the numbers here.
 # OpenCV hue is 0-179: red ~0-10/170-179, orange ~10-25, yellow ~25-35,
@@ -125,7 +126,8 @@ class Tracker:
         self.found = obj is not None
         if self.found:
             self.last_seen = now
-            self.cam_x = (obj[0] - WIDTH / 2) / (WIDTH / 2)
+            self.cam_x = ((obj[0] - WIDTH / 2) / (WIDTH / 2) if PITCH_AXIS == "x"
+                          else (obj[1] - HEIGHT / 2) / (HEIGHT / 2))
 
         lost = now - self.last_seen > LOST_TIME
         if not self.active or lost:
