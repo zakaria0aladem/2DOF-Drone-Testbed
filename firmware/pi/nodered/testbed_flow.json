@@ -1631,5 +1631,48 @@
   "wires": [
    []
   ]
+ },
+ {
+  "id": "in_twin",
+  "type": "mqtt in",
+  "z": "tb_flow",
+  "x": 340,
+  "y": 1080,
+  "wires": [
+   [
+    "f_twin"
+   ]
+  ],
+  "name": "twin/tel",
+  "topic": "twin/tel",
+  "qos": "0",
+  "datatype": "json",
+  "broker": "broker",
+  "nl": false,
+  "rap": true,
+  "rh": 0,
+  "inputs": 0
+ },
+ {
+  "id": "f_twin",
+  "type": "function",
+  "z": "tb_flow",
+  "x": 560,
+  "y": 1080,
+  "wires": [
+   [
+    "c_pitch"
+   ],
+   [
+    "c_yaw"
+   ]
+  ],
+  "name": "digital twin (10 Hz)",
+  "outputs": 2,
+  "func": "// Simulator telemetry (same firmware, same commands): add it to both charts.\nconst now = Date.now();\nif (now - (context.get(\"last\") || 0) < 100) return null;\ncontext.set(\"last\", now);\nconst t = msg.payload;\nreturn [ {topic: \"digital twin\", payload: t.pitch}, {topic: \"digital twin\", payload: t.enc_yaw} ];",
+  "noerr": 0,
+  "initialize": "",
+  "finalize": "",
+  "libs": []
  }
 ]

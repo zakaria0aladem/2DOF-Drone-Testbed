@@ -64,10 +64,11 @@ class Bridge:
         self.was_lost = False
         self.camera = None if args.no_camera else CameraWorker(self)
 
+        self.prefix = args.prefix      # "testbed" = real rig, "twin" = simulator
         self.mqtt = make_client()
         self.mqtt.on_connect = self._on_connect
         self.mqtt.on_message = self._on_message
-        self.mqtt.will_set("testbed/status", json.dumps({"bridge": "offline"}), retain=True)
+        self.mqtt.will_set(self.prefix + "/status", json.dumps({"bridge": "offline"}), retain=True)
         # connect_async: if the broker (on the laptop) is not up yet, keep trying in the
         # background instead of crashing. The board link keeps running meanwhile.
         print("MQTT broker: %s:1883 (retrying until it answers)" % args.broker)
@@ -83,14 +84,14 @@ class Bridge:
     def _on_tel(self, tel):
         data = {k: tel[k] for k in protocol.TEL_FIELDS if k in tel}
         data["pi_time"] = round(tel["pi_time"], 3)
-        self.mqtt.publish("testbed/tel", json.dumps(data))
+        self.mqtt.publish(self.prefix + "/tel", json.dumps(data))
         lost = bool(tel["link_lost"])
         if lost and not self.was_lost:
             self.event("board reports link lost: pitch target back to 0")
         self.was_lost = lost
 
     def _on_gains(self, gains):
-        self.mqtt.publish("testbed/gains", json.dumps(gains), retain=True)
+        self.mqtt.publish(self.prefix + "/gains", json.dumps(gains), retain=True)
 
     def _status_loop(self):
         while True:
@@ -116,12 +117,12 @@ class Bridge:
                 "tx": self.link.tx_count,
                 "camera": cam,
             }
-            self.mqtt.publish("testbed/status", json.dumps(status), retain=True)
+            self.mqtt.publish(self.prefix + "/status", json.dumps(status), retain=True)
             time.sleep(STATUS_PERIOD)
 
     def event(self, text):
         print(time.strftime("%H:%M:%S"), text)
-        self.mqtt.publish("testbed/event", json.dumps({"t": time.time(), "text": text}))
+        self.mqtt.publish(self.prefix + "/event", json.dumps({"t": time.time(), "text": text}))
 
     # ---------- MQTT -> board ----------
     def _on_connect(self, client, *args):
@@ -206,7 +207,7 @@ class Bridge:
         if self.log:
             print("Saved", self.log.close())
         time.sleep(0.3)
-        self.mqtt.publish("testbed/status", json.dumps({"bridge": "offline"}), retain=True)
+        self.mqtt.publish(self.prefix + "/status", json.dumps({"bridge": "offline"}), retain=True)
         self.mqtt.loop_stop()
         self.link.close()
 
@@ -362,6 +363,8 @@ def main():
     ap.add_argument("--broker", default="localhost", help="MQTT broker address (the laptop's IP)")
     ap.add_argument("--http", type=int, default=8080, help="web dashboard port (0 = off)")
     ap.add_argument("--no-camera", action="store_true")
+    ap.add_argument("--prefix", default="testbed",
+                    help='topic prefix for tel/status/gains/event: "twin" for the simulator (commands always come from testbed/cmd/#)')
     args = ap.parse_args()
 
     bridge = Bridge(args)
