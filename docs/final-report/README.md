@@ -256,3 +256,35 @@ Yaw steps: (a) -45 -> +90° with gains 3 / 0 / 0.5, (b) 90 -> 0° with gains 2 /
 ROS 2: (a) pitch command from the terminal, (b) Foxglove 3D model following the rig.
 
 ![ROS 2 demo](05_Testing/fig_ros.png)
+
+### Dashboard screenshots (live, real rig)
+
+Taken from the IoT demo recording. Node-RED dashboard at `http://localhost:1880/dashboard/testbed`.
+
+**System status and live charts.** Board connected, motors ARMED, mode MANUAL. Pitch (IMU, encoder, reference) and yaw (encoder, reference) charts during the yaw step to +90°.
+
+![Status and charts](dashboard/dashboard_1_status_and_charts.png)
+
+**Pitch step.** Slider set to +20°, then -19°. The values under the charts show measured pitch, reference, controller output and the yaw error.
+
+![Pitch step](dashboard/dashboard_2_pitch_step.png)
+
+**Commands and motors.** +90° yaw preset just pressed. The four gauges show the ESC pulse of each motor (µs). Mode buttons, data logging and the DISARM button are in the same panel.
+
+![Yaw preset and motor gauges](dashboard/dashboard_3_yaw_preset_and_motors.png)
+
+**Controller gains and camera.** Gains in use (confirmed by the board with `$GAIN`): pitch 6 / 2.5 / 0.85, yaw 2 / 0.5 / 2 after the live change. The camera picture comes from the Pi.
+
+![Gains and camera](dashboard/dashboard_4_gains_and_camera.png)
+
+**Camera tracking, Track pitch.** Ball found at x = +0.80: Pi reference +12.8°, board reference +13.2°, rig at +16.8°.
+
+![Track pitch](dashboard/dashboard_5_camera_track_pitch.png)
+
+**Camera tracking, Track both.** Mode set to Track both with the ball in view (pitch reference -4.1°, rig -4.0°).
+
+![Track both](dashboard/dashboard_6_camera_track_both.png)
+
+**Digital twin.** Drag the orange dots to send a pitch or yaw reference. Blue is the real rig, orange dashed is the reference.
+
+![Digital twin](dashboard/dashboard_7_digital_twin.png)

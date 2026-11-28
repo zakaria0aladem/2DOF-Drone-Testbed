@@ -16,4 +16,22 @@ Board pin map, flashing and team rules: [docs/PROJECT_NOTES.md](docs/PROJECT_NOT
 
 Final MTR520 submission (report, setup and operation guide, demo results): [docs/final-report](docs/final-report). The demo videos are kept outside the repo (too large).
 
+## Final demo (MTR520)
+
+Live Node-RED dashboard with the real rig: status, pitch and yaw charts.
+
+![Dashboard](docs/final-report/dashboard/dashboard_1_status_and_charts.png)
+
+Commands, motor gauges, gains and camera tracking:
+
+![Commands and motors](docs/final-report/dashboard/dashboard_3_yaw_preset_and_motors.png)
+
+![Camera tracking](docs/final-report/dashboard/dashboard_5_camera_track_pitch.png)
+
+The rig during the demo:
+
+![Rig](docs/final-report/05_Testing/fig_rig_photos.png)
+
+More screenshots and results: [docs/final-report/README.md](docs/final-report/README.md).
+
 New to Git? Read [docs/GIT_TUTORIAL.md](docs/GIT_TUTORIAL.md) first (5 minutes). Prefer typing commands? See [docs/GIT_COMMANDS.md](docs/GIT_COMMANDS.md).
