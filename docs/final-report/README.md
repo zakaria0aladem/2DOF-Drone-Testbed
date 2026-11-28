@@ -226,3 +226,33 @@ The values below were read from the live dashboard charts in `06_Demonstration/I
 | ROS 2 | Node and topic lists, `topic echo /testbed/pitch`, `pitch_cmd` ±10° (echo 10.5°), `yaw_cmd` 30° and back to 0°, Foxglove 3D model follows the real rig |
 
 Not shown in the videos: the DISARM button, CSV logging, Track yaw / Track both results, the ROS parameter change and the ROS disarm service. These are implemented as described above.
+
+### Pictures from the demonstration
+
+The rig during the demo: (a) armed and level, (b) after the yaw step to +90°, (c) pitch reference +20°, (d) ball held in front of the camera.
+
+![Rig during the demonstration](05_Testing/fig_rig_photos.png)
+
+Node-RED dashboard: system status and live pitch / yaw charts.
+
+![Dashboard](05_Testing/fig_dashboard.png)
+
+Command panel with motor gauges, and the live yaw gain change (3 / 0 / 0.5 to 2 / 0.5 / 2).
+
+![Commands and gains](05_Testing/fig_controls_gains.png)
+
+Pitch steps: (a) 0 -> +20 -> -19°, (b) -19 -> 0°.
+
+![Pitch steps](05_Testing/fig_pitch_steps.png)
+
+Yaw steps: (a) -45 -> +90° with gains 3 / 0 / 0.5, (b) 90 -> 0° with gains 2 / 0.5 / 2.
+
+![Yaw steps](05_Testing/fig_yaw_steps.png)
+
+(a) Camera tracking in Track pitch mode, (b) digital twin panel.
+
+![Camera tracking and digital twin](05_Testing/fig_camera_twin.png)
+
+ROS 2: (a) pitch command from the terminal, (b) Foxglove 3D model following the rig.
+
+![ROS 2 demo](05_Testing/fig_ros.png)
